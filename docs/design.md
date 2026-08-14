@@ -1,7 +1,8 @@
 # Repo Lens — IntelliJ IDEA Plugin 設計書
 
-> 文書バージョン: 0.1 (Draft)  
+> 文書バージョン: 0.2 (Draft)  
 > 作成日: 2026-08-14  
+> 更新日: 2026-08-14  
 > 対象: IntelliJ IDEA Plugin  
 > リポジトリ: `repo-lens`  
 > 基本方針: 実行時AI/API課金なし・ローカル完結
@@ -36,6 +37,7 @@ Repo Lens の目的は以下とする。
 - 単一または複数の Finding を AI に貼り付けやすい Markdown としてコピーできるようにする。
 - 完成プラグインは外部 AI API、サーバー、有料外部サービスを必須としない。
 - IntelliJ Platform の PSI / UAST / VCS / Action System を活用し、独自パーサーの再実装を最小化する。
+- Repo Lens 本体には単一の「対応言語」制限を設けず、Analyzer ごとの capability と Language Provider によって対応範囲を決める。
 
 ### 1.1 成功指標
 
@@ -46,6 +48,7 @@ Repo Lens の目的は以下とする。
 | AI向けコピー | 1件または複数選択から1アクションで Markdown 生成 |
 | 外部通信 | 0件 |
 | 通常編集への影響 | 長時間 PSI read lock で EDT をブロックしない |
+| 言語非依存性 | Provider がない言語でも Universal Analyzer が利用できる |
 
 ---
 
@@ -64,6 +67,8 @@ Repo Lens は「静的解析ツール」ではなく **Code Review Navigator** �
 | Evidence over Judgment | 行数、ネスト、引数数など観測値を提示し断定を避ける |
 | Explicit Export | 外部へ渡す情報はユーザーの Copy 操作時のみ生成する |
 | Provider Architecture | 言語非依存解析と言語別解析を分離する |
+| Graceful Degradation | 利用できない Analyzer があっても Repo Lens 全体を停止しない |
+| Capability over Supported Language | 製品単位ではなく Analyzer 単位で利用可否を示す |
 | Progressive Delivery | MVP を小さくし、高度な解析は後続バージョンへ分離する |
 
 ---
@@ -126,22 +131,101 @@ MVP では以下を実装しない。
 | ビルド | Gradle + IntelliJ Platform Gradle Plugin 2.x |
 | IDE baseline | IntelliJ IDEA 2026.1 を第一候補 |
 | UI | Tool Window + Action System |
-| コード解析 | PSI / UAST |
+| コード解析 | PSI / UAST / Language Provider |
 | VCS | IntelliJ Platform VCS API |
 | 設定保存 | PersistentStateComponent 等の標準機構 |
 
 2026.2 互換性は Plugin Verifier と実機で検証する。2026.2 固有 API が必須となる場合のみ baseline 引き上げを検討する。
 
-### 4.1 言語サポート階層
+### 4.1 言語サポートの基本方針
 
-| Tier | 対象 | 解析 |
-|---|---|---|
-| Tier 0 | 全テキスト言語 | Large File、TODO/FIXME、VCS変更量など |
-| Tier 1 | Java / Kotlin | UASTによるClass/Method/Parameter/Nesting |
-| Tier 2 | JavaScript / TypeScript | 将来 Provider で追加 |
-| Tier 2 | Go その他 | 公開 API が安定して利用できる場合に追加 |
+Repo Lens 自体に「この言語だけが対応」という固定リストを持たせない。
 
-言語固有の Analyzer は Provider として分離し、MVP のコアが特定言語プラグインへ強く依存しない構造にする。
+対応可否は **Analyzer capability** として扱う。言語固有 AST を必要としない Analyzer は広く動作させ、構造解析は対象言語の Language Provider が利用可能な場合のみ追加する。
+
+したがって、次の二層構造とする。
+
+#### Universal Analyzer
+
+IntelliJ がテキストファイルとして扱えるプロジェクトで、可能な限り言語非依存に動作する。
+
+主な対象:
+
+- Large File
+- TODO / FIXME
+- Local Changes
+- Branch Diff
+- Large Diff
+- Git history metrics
+- Hotspot の言語非依存部分
+
+#### Language Provider Analyzer
+
+クラス、関数、メソッド、引数、ネスト、参照、依存関係などの構造情報を扱う。
+
+対象言語の PSI / UAST / language API と Repo Lens 側の Provider の両方が利用可能な場合に実行する。
+
+Language Provider がない、または必要な language plugin が利用できない場合でも、Repo Lens 本体は起動・解析可能とする。利用可能な Analyzer のみ実行し、利用不可の Analyzer は理由付きで表示する。
+
+### 4.2 言語サポート階層
+
+| Tier | 対象 | 解析 | 予定 |
+|---|---|---|---|
+| Tier 0 | IntelliJ が扱えるテキスト言語 | Large File、TODO/FIXME、Git系 | v0.1〜 |
+| Tier 1 | Java / Kotlin | UAST による Class / Method / Parameter / Nesting | v0.1 |
+| Tier 2 | Go | Go Provider による Function / Method / Parameter / Nesting | v0.4 第一優先 |
+| Tier 2 | JavaScript / TypeScript | JS/TS Provider による Class / Function / Method / Parameter / Nesting | v0.4 |
+| Tier 3 | Python / Scala / Groovy / その他 | Provider または利用可能 API に応じて追加 | v1.x候補 |
+
+### 4.3 Capability Matrix
+
+製品 UI / ドキュメントでは「対応言語一覧」よりも capability matrix を優先して表示する。
+
+例:
+
+| Language | Universal | Structure | Reference | Dependency |
+|---|---|---|---|---|
+| Java | Yes | Yes | Yes / phased | Yes / phased |
+| Kotlin | Yes | Yes | Yes / phased | Yes / phased |
+| Go | Yes | v0.4 | Phased | Phased |
+| JavaScript | Yes | v0.4 | Limited / phased | Limited / phased |
+| TypeScript | Yes | v0.4 | Limited / phased | Limited / phased |
+| Other text language | Yes | Provider dependent | Provider dependent | Provider dependent |
+
+この表の `No` / `Unavailable` は Repo Lens 全体が利用できないことを意味しない。該当 Analyzer のみ非対応であることを示す。
+
+### 4.4 Go 対応方針
+
+Go は v0.4 の最初の Language Provider 実装対象とする。
+
+最低限の構造解析対象:
+
+- Large Function
+- Large Method
+- Too Many Parameters
+- Deep Nesting
+
+Go には Java の class と同一概念を前提としない。`Function` / receiver `Method` / package など Go の構造に合わせた Finding を生成する。
+
+追加候補:
+
+- import / package dependency evidence
+- Unused Candidate の Go 対応
+- Circular Dependency の package 情報連携
+
+追加候補は v0.2 Analyzer の再利用性と利用可能 API の安定性を確認して段階的に実装する。
+
+Go Provider の重要な役割は、Java/Kotlin 向け UAST 実装に依存しすぎず、Language Provider SPI が本当に他言語へ拡張可能かを検証することである。そのため **Go Provider を JS/TS Provider より先に実装・検証する**。
+
+### 4.5 Language Provider 設計原則
+
+- 言語固有 Analyzer は Provider として分離する。
+- Core / UI は特定言語 plugin の型へ直接依存しない。
+- Provider の `availability` と Analyzer の `supports()` を分離して扱えるようにする。
+- Provider がない環境でも class loading error 等で Repo Lens 本体が停止しない構造にする。
+- 言語差を無理に共通 AST へ押し込まない。
+- Provider 固有情報は `Finding.metadata` で拡張する。
+- Navigation / Copy / Filter は共通 Finding モデルを通して統一する。
 
 ---
 
@@ -157,6 +241,10 @@ Repo Lens Tool Window
 Scope を選択
   ↓
 Analyze
+  ↓
+AnalyzerRegistry
+  ├─ 利用可能 Analyzer を実行
+  └─ 利用不可 Analyzer は理由を保持
   ↓
 Findings 一覧
   ↓
@@ -178,6 +266,8 @@ Findings 一覧
 | UC-03 | 複数 Finding を AI に確認させる | 選択項目が1つの Markdown として Clipboard へ出力 |
 | UC-04 | TODO/FIXME を棚卸し | TODO/FIXME だけフィルタ・検索・コピー可能 |
 | UC-05 | 閾値を変更 | Settings 変更後の再解析へ反映 |
+| UC-06 | Provider 未対応言語を解析 | Universal Analyzer の結果を取得し、構造解析不可理由を確認できる |
+| UC-07 | Go を解析 | Go Provider の Finding と Universal Finding を同一 UI で確認できる |
 
 ---
 
@@ -317,6 +407,23 @@ Repo Lens
 
 結果の選択状態は可能な範囲で保持する。
 
+### 8.4 Capability 表示
+
+v0.4 以降は、Settings または Tool Window から現在の環境で利用可能な Analyzer を確認できるようにする。
+
+例:
+
+```text
+Language Capabilities
+
+Java        Universal ✓  Structure ✓
+Kotlin      Universal ✓  Structure ✓
+Go          Universal ✓  Structure ✓
+Python      Universal ✓  Structure — Provider unavailable
+```
+
+利用不可をエラーとして赤表示するのではなく、通常の capability 情報として扱う。
+
 ---
 
 ## 9. Copy for AI
@@ -345,7 +452,7 @@ This method exceeds the configured method length threshold.
 ### Code
 
 ```kotlin
-async fun processPayment(...) {
+fun processPayment(...) {
     // ...
 }
 ```
@@ -404,6 +511,7 @@ Application Services
   - AnalysisOrchestrator
   - FindingNavigator
   - ClipboardFormatter
+  - LanguageCapabilityService
      ↓
 Domain Model
   - Finding
@@ -411,8 +519,15 @@ Domain Model
   - AnalysisRequest
   - SettingsSnapshot
      ↓
+Analyzer / Provider Layer
+  - Universal Analyzers
+  - UAST Provider
+  - Go Provider
+  - JS/TS Provider
+     ↓
 Platform Adapters
   - PSI / UAST
+  - Language APIs
   - VCS
   - Clipboard
   - IntelliJ Navigation
@@ -441,9 +556,30 @@ interface RepoLensAnalyzer {
 
 Analyzer は UI component に直接依存しない。
 
+#### LanguageProvider
+
+v0.4 で明確な SPI として定義する。
+
+概念例:
+
+```kotlin
+interface LanguageProvider {
+    val id: String
+    fun availability(project: Project): ProviderAvailability
+    fun analyzers(): List<RepoLensAnalyzer>
+    fun capabilities(): Set<LanguageCapability>
+}
+```
+
+実際の API 形状は実装時に調整してよいが、Provider の availability と Analyzer の supports 判定を core から扱えることを必須とする。
+
 #### AnalyzerRegistry
 
-利用可能な Analyzer を登録し、言語・Scope・Indexing 状態に応じて実行対象を決定する。
+利用可能な Analyzer を登録し、言語・Scope・Indexing 状態・Provider availability に応じて実行対象を決定する。
+
+#### LanguageCapabilityService
+
+現在の IDE / project で利用可能な Provider と Analyzer capability を集約する。
 
 #### FindingNavigator
 
@@ -505,6 +641,7 @@ Finding を外部 AI へ渡しやすい Markdown へ変換する。AI Provider �
 - ファイル単位または Analyzer 単位で処理を分割する。
 - Cancellation をサポートする。
 - Dumb Mode では Index 依存 Analyzer を待機・制限する。
+- 一つの Language Provider の失敗で他 Provider / Universal Analyzer を停止しない。
 
 ### 13.2 キャッシュ
 
@@ -515,6 +652,7 @@ MVP では過剰なキャッシュを避ける。
 - File modification stamp
 - Analyzer ID
 - Settings hash
+- Provider version / capability hash
 
 Finding 本文やコード断片を恒久キャッシュしない。
 
@@ -538,6 +676,7 @@ MVP で複雑になる場合は解析完了単位で更新してよいが、Prog
 | Exclude | glob / regex |
 | TODO markers | TODO / FIXME / HACK 等 |
 | Copy | context lines / max code lines / path形式 / template |
+| Language Providers | availability / capability の表示、Provider 単位設定 |
 
 ### 14.2 永続化
 
@@ -554,7 +693,9 @@ MVP で複雑になる場合は解析完了単位で更新してよいが、Prog
 |---|---|
 | Indexing中 | 実行可能な Analyzer のみ動作し、待機/skip理由を表示 |
 | PSI取得失敗 | 対象ファイルを skip し Analysis Problems へ集約 |
-| Unsupported language | Tier 0 のみ実行しエラー扱いしない |
+| Provider unavailable | Universal Analyzer は実行し、対象構造 Analyzer は理由付きで skip |
+| Unsupported syntax | 該当 Analyzer のみ安全に skip |
+| Language plugin 未導入 | Repo Lens 本体は起動し、該当 Provider を unavailable と表示 |
 | ファイル変更中 | 安全に再取得または再解析 |
 | Git/VCS未設定 | Local Changes を無効化し理由表示 |
 | Clipboard失敗 | Notification 表示、Finding は保持 |
@@ -567,6 +708,7 @@ MVP で複雑になる場合は解析完了単位で更新してよいが、Prog
 記録対象は以下程度に限定する。
 
 - Analyzer ID
+- Provider ID
 - File path
 - Elapsed time
 - Exception type
@@ -591,9 +733,11 @@ MVP の重要要件:
 | Source logging | コード本文をログへ出さない |
 | Persistence | Finding本文 / Code snippet を原則ディスク永続化しない |
 
+Language Provider を追加してもこの原則を変更しない。
+
 ---
 
-## 17. 将来 Analyzer
+## 17. 将来 Analyzer / Provider
 
 ### v0.2
 
@@ -623,6 +767,21 @@ package / module / import graph を構築し、Strongly Connected Components を
 
 Hotspot は「変更頻度が高い + 構造的な Finding が多い」ファイルをレビュー優先候補として可視化する方向を検討する。
 
+### v0.4
+
+Language Provider architecture を確立する。
+
+実装優先順:
+
+1. **Go Provider**
+2. JavaScript / TypeScript Provider
+
+Go Provider では最低限 Large Function / Method、Too Many Parameters、Deep Nesting を提供する。
+
+JS/TS Provider でも同等の構造チェックを可能な範囲で提供する。
+
+Python 等は v0.4 完了後の候補とする。
+
 ---
 
 ## 18. テスト戦略
@@ -633,6 +792,9 @@ Hotspot は「変更頻度が高い + 構造的な Finding が多い」ファイ
 |---|---|
 | Tier 0 Analyzer | 改行形式、巨大ファイル、TODO marker、exclude |
 | UAST Analyzer | Java/Kotlin class/method/params/nesting fixture |
+| Go Provider | function/method/params/nesting fixture、Provider有無 |
+| JS/TS Provider | function/class/params/nesting、JSX/TSX、Provider有無 |
+| Capability | Provider availability、Analyzer supports、fallback |
 | Formatter | 単一/複数Finding、escape、truncation、line number |
 | Scope Resolver | Project/Module/Local Changes |
 | Dedup | stable ID / 重複排除 |
@@ -644,6 +806,8 @@ Hotspot は「変更頻度が高い + 構造的な Finding が多い」ファイ
 - Dumb Mode / Indexing 中の挙動をテストする。
 - Plugin Verifier で対象 IDE build との互換性を確認する。
 - 大規模 fixture で responsiveness を確認する。
+- Provider 未導入環境で Repo Lens 本体が起動することを確認する。
+- Java/Kotlin/Go/JS/TS 混在 project で Findings 統合を確認する。
 
 ### 18.3 品質ゲート
 
@@ -652,6 +816,7 @@ Hotspot は「変更頻度が高い + 構造的な Finding が多い」ファイ
 - Tool Window / Analyze / Navigate / Copy の smoke test 成功
 - 解析中も Editor typing を阻害しない
 - ネットワーク通信が発生しない
+- Provider 不在が Repo Lens 全体の起動失敗につながらない
 
 ---
 
@@ -662,7 +827,7 @@ Hotspot は「変更頻度が高い + 構造的な Finding が多い」ファイ
 | v0.1 | Tool Window / Scope / 6 checks / Navigation / Multi-select Copy / Settings |
 | v0.2 | Unused Candidate / Circular Dependency / ignore/suppress |
 | v0.3 | Branch Diff / Large Diff / Hotspot / Git history |
-| v0.4 | JS/TS 等 Language Analyzer Provider |
+| v0.4 | **Go を第一優先とする Language Provider、続いて JS/TS Provider、capability UI** |
 | v1.0 | 安定性、互換性、ドキュメント、Marketplace公開判断 |
 
 ### 19.1 v0.1 実装順序
@@ -677,6 +842,17 @@ Hotspot は「変更頻度が高い + 構造的な Finding が多い」ファイ
 8. Local Changes Scope
 9. Cancellation / Dumb Mode / performance 調整
 10. Plugin Verifier + 実 Repository smoke test
+
+### 19.2 v0.4 実装順序
+
+1. Language Provider SPI / Capability Model
+2. Go Provider skeleton
+3. Go Function / Method / Parameter / Nesting Analyzer
+4. Go Navigation / Copy / mixed result integration
+5. Provider architecture checkpoint
+6. JS/TS Provider
+7. JS/TS structure Analyzer
+8. mixed-language smoke test
 
 ---
 
@@ -699,6 +875,15 @@ com.repolens.intellij
 │     ├─ LargeMethodAnalyzer.kt
 │     ├─ ParameterCountAnalyzer.kt
 │     └─ NestingAnalyzer.kt
+├─ language/
+│  ├─ LanguageProvider.kt
+│  ├─ LanguageCapabilityService.kt
+│  ├─ go/
+│  │  ├─ GoLanguageProvider.kt
+│  │  └─ analyzer/
+│  └─ jsts/
+│     ├─ JsTsLanguageProvider.kt
+│     └─ analyzer/
 ├─ model/
 │  ├─ Finding.kt
 │  ├─ SourceLocation.kt
@@ -723,6 +908,8 @@ com.repolens.intellij
    └─ RepoLensConfigurable.kt
 ```
 
+`language/` 配下は v0.4 で導入する。v0.1 時点では UAST Analyzer を既存 `analysis/uast/` に置いてよいが、Provider SPI 導入時に必要に応じて整理する。
+
 依存方向:
 
 ```text
@@ -730,19 +917,23 @@ UI / Actions
     ↓
 Application Services
     ↓
-Domain Model
+Domain Model / Analyzer SPI
     ↓
-Platform Adapters
+Language Providers / Platform Adapters
 ```
 
 禁止事項:
 
 - Analyzer → UI component への直接依存
 - Domain Model → IntelliJ Swing UI への依存
+- Core → Go / JS / TS 固有 PSI 型への直接依存
+- Provider 不在時に class loading error を発生させる強制依存
 
 ---
 
 ## 21. Definition of Done
+
+### v0.1
 
 - [ ] IntelliJ IDEA 上で Repo Lens Tool Window を開ける
 - [ ] Current File / Project / Local Changes が動作する
@@ -757,6 +948,22 @@ Platform Adapters
 - [ ] 設定がプロジェクトごとに保持される
 - [ ] Plugin Verifier と主要テストが通過する
 
+### Language architecture
+
+- [ ] Repo Lens 本体に単一の対応言語制限を設けない
+- [ ] Universal Analyzer は Provider 非対応言語でも動作可能とする
+- [ ] Analyzer ごとに capability を判定できる
+- [ ] Provider unavailable を正常状態として扱える
+
+### v0.4追加条件
+
+- [ ] Go Provider が実装される
+- [ ] Go の Function / Method / Parameter / Nesting を解析できる
+- [ ] Go Provider を追加しても Core / UI の大規模変更を必要としない
+- [ ] JS/TS Provider が実装される
+- [ ] Capability をユーザーが確認できる
+- [ ] Provider がない環境でも Repo Lens 本体が起動する
+
 ---
 
 ## 22. 未決事項
@@ -769,6 +976,8 @@ Platform Adapters
 | OD-04 | Local Changes の未追跡ファイル | 含める方向 |
 | OD-05 | 2026.1 baseline の2026.2互換 | Plugin Verifier 結果で判断 |
 | OD-06 | Plugin名 | **Repo Lens で確定**。Marketplace公開時に表示名重複のみ確認 |
+| OD-07 | Go の reference/dependency capability | v0.4実装時に利用可能 API とノイズ量を確認して確定 |
+| OD-08 | Provider の optional dependency 実装方法 | class loading と互換性を含め v0.4 skeleton で確定 |
 
 ---
 
@@ -806,6 +1015,8 @@ Copy for AI
 ```
 
 縦のワークフローが実 Repository で実用になることを確認してから UAST 系 Analyzer を追加する。
+
+Language Provider は v0.1 の縦ワークフローが安定した後に v0.4 で導入する。ただし `RepoLensAnalyzer.supports()` や AnalyzerRegistry は、将来の Provider 追加を妨げない形で v0.1 から設計する。
 
 ---
 

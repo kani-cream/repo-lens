@@ -9,7 +9,7 @@
 | [v0.1](./v0.1.md) | Core workflow | Analyze → Findings → Navigate → Copy for AI の縦のワークフローを完成させる |
 | [v0.2](./v0.2.md) | Structural analysis | Unused Candidate / Circular Dependency / ignore・suppress を追加する |
 | [v0.3](./v0.3.md) | Git-aware review | Branch Diff / Large Diff / Git history / Hotspot を追加する |
-| [v0.4](./v0.4.md) | Language expansion | JavaScript / TypeScript を中心に Language Analyzer Provider を拡張する |
+| [v0.4](./v0.4.md) | Language Providers | Go を第一優先に、JavaScript / TypeScript へ Language Analyzer Provider を拡張する |
 | [v1.0](./v1.0.md) | Stable release | 安定性・互換性・ドキュメントを整え、Marketplace 公開可否を判断する |
 
 ## 共通原則
@@ -23,6 +23,8 @@
 - Finding は断定ではなくレビュー候補として扱う。
 - IntelliJ Platform の Public API を優先する。
 - 既存 IntelliJ 機能を再実装せず、レビュー操作レイヤーとして統合する。
+- Repo Lens 本体には単一の「対応言語」制限を設けず、Analyzer ごとに利用可能な capability を判定する。
+- Language Provider がない言語でも、Large File / TODO-FIXME / Git 系など言語非依存 Analyzer は可能な範囲で利用できる。
 
 ## マイルストーン運用
 
