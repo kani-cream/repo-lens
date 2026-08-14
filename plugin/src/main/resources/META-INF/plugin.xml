@@ -1,0 +1,29 @@
+<idea-plugin>
+    <id>com.kanicream.repolens</id>
+    <name>Repo Lens</name>
+    <vendor>kani-cream</vendor>
+
+    <description><![CDATA[
+        <p>Repo Lens is a code review navigator. It collects review candidates
+        (large files, TODO / FIXME markers, and more to come) into a single tool window,
+        lets you jump from a finding straight to the code, and copies selected findings
+        as structured Markdown that you can paste into any AI chat or review tool.</p>
+
+        <p>Repo Lens never calls an AI API, stores no API keys, requires no external
+        server, and never sends your source code anywhere. The clipboard is written only
+        on an explicit Copy action.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Repo Lens"
+                    anchor="bottom"
+                    icon="/icons/repoLens.svg"
+                    factoryClass="com.kanicream.repolens.ui.RepoLensToolWindowFactory"/>
+        <projectConfigurable parentId="tools"
+                             id="com.kanicream.repolens.settings"
+                             displayName="Repo Lens"
+                             instance="com.kanicream.repolens.settings.RepoLensConfigurable"/>
+    </extensions>
+</idea-plugin>
