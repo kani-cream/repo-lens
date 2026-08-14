@@ -1,6 +1,6 @@
 # Repo Lens — IntelliJ IDEA Plugin 設計書
 
-> 文書バージョン: 0.2 (Draft)  
+> 文書バージョン: 0.3 (Draft)  
 > 作成日: 2026-08-14  
 > 更新日: 2026-08-14  
 > 対象: IntelliJ IDEA Plugin  
@@ -129,13 +129,16 @@ MVP では以下を実装しない。
 |---|---|
 | 実装言語 | Kotlin |
 | ビルド | Gradle + IntelliJ Platform Gradle Plugin 2.x |
-| IDE baseline | IntelliJ IDEA 2026.1 を第一候補 |
+| Plugin ID | `com.kanicream.repolens` |
+| Kotlin package root | `com.kanicream.repolens` |
+| IDE baseline | **IntelliJ IDEA 2026.1 に固定** |
+| 互換性確認 | IntelliJ IDEA 2026.2 を Plugin Verifier + 実機で確認 |
 | UI | Tool Window + Action System |
 | コード解析 | PSI / UAST / Language Provider |
 | VCS | IntelliJ Platform VCS API |
 | 設定保存 | PersistentStateComponent 等の標準機構 |
 
-2026.2 互換性は Plugin Verifier と実機で検証する。2026.2 固有 API が必須となる場合のみ baseline 引き上げを検討する。
+2026.1 を初期 baseline とし、v0.1 開発中に 2026.2 固有 API へ安易に引き上げない。2026.2 は互換性確認対象とし、2026.1 を維持できない技術的理由が発生した場合のみ baseline 変更を設計判断として明示する。
 
 ### 4.1 言語サポートの基本方針
 
@@ -226,6 +229,43 @@ Go Provider の重要な役割は、Java/Kotlin 向け UAST 実装に依存し�
 - 言語差を無理に共通 AST へ押し込まない。
 - Provider 固有情報は `Finding.metadata` で拡張する。
 - Navigation / Copy / Filter は共通 Finding モデルを通して統一する。
+
+### 4.6 Language Provider の Optional Dependency
+
+Go / JavaScript / TypeScript などの言語プラグインは **Repo Lens Core の必須依存にしない**。
+
+言語固有 API を利用する Provider は IntelliJ Platform の optional dependency 機構を利用し、依存言語プラグインが存在するときだけ Provider を有効化する。
+
+設計要件:
+
+- Repo Lens Core は Go / JS / TS プラグインが未導入でもロードできる。
+- 言語固有クラスへの参照は optional descriptor / adapter 側へ隔離する。
+- Provider の class loading が Core 起動経路へ漏れない。
+- Provider unavailable は正常状態として扱う。
+- Provider の有無は `LanguageCapabilityService` から確認できる。
+
+概念構造:
+
+```text
+Repo Lens Core
+├─ Universal Analyzers
+├─ Java/Kotlin UAST
+├─ optional: Go Provider
+│    └─ Go language plugin
+└─ optional: JS/TS Provider
+     └─ JavaScript / TypeScript language plugin
+```
+
+### 4.7 対応 IDE と対応言語の分離
+
+「Repo Lens が動作する IDE」と「特定 Language Provider が利用できる IDE」を同一概念として扱わない。
+
+- **Core compatibility**: Repo Lens Core をロード・実行できる IntelliJ Platform build。
+- **Provider compatibility**: 対象 IDE で必要な language plugin と Public API が利用可能であり、その Provider をロードできる状態。
+
+ドキュメントや UI では、単純な「対応言語一覧」だけでなく、IDE / Provider / Analyzer capability の組み合わせを示す。
+
+Provider 非対応 IDE でも Universal Analyzer が利用可能であれば、Repo Lens 自体は利用可能とする。
 
 ---
 
@@ -554,7 +594,9 @@ interface RepoLensAnalyzer {
 }
 ```
 
-Analyzer は UI component に直接依存しない。
+Analyzer は **Finding を生成することだけを責務**とする。UI component、Clipboard、Navigation、Notification、Tool Window の状態へ直接依存してはならない。
+
+Analyzer が必要とする IntelliJ API は `AnalysisContext` または adapter を通して受け取り、UI 操作を副作用として実行しない。
 
 #### LanguageProvider
 
@@ -588,6 +630,21 @@ Finding の SourceLocation / Symbol 情報から Editor を開き、可能な場
 #### MarkdownAiFormatter
 
 Finding を外部 AI へ渡しやすい Markdown へ変換する。AI Provider 固有処理は持たない。
+
+### 10.2 Analyzer の責務境界
+
+各層の責務を次のように固定する。
+
+| 層 | 責務 | 禁止事項 |
+|---|---|---|
+| Analyzer | コードを解析し `Finding` を返す | UI更新、Clipboard書き込み、Editor移動 |
+| Orchestrator | Scope / Analyzer実行 / Cancellation / 集約 | 言語固有UIの実装 |
+| Navigator | FindingからEditorへ移動 | Finding判定ロジック |
+| Formatter | FindingをMarkdown等へ整形 | コード解析、外部送信 |
+| UI | 結果表示・ユーザー操作 | PSI解析ロジックの直接実装 |
+| Provider | 言語固有APIをAnalyzerへ接続 | Core/UIへの言語固有型の漏洩 |
+
+この境界は v0.1 から守る。後続バージョンで利便性のために Analyzer から UI や Clipboard を直接操作する実装を追加しない。
 
 ---
 
@@ -809,7 +866,50 @@ Python 等は v0.4 完了後の候補とする。
 - Provider 未導入環境で Repo Lens 本体が起動することを確認する。
 - Java/Kotlin/Go/JS/TS 混在 project で Findings 統合を確認する。
 
-### 18.3 品質ゲート
+### 18.3 実 Repository Smoke Test
+
+fixture だけでリリース完了としない。各主要マイルストーンで実 Repository を使った smoke test を必須とする。
+
+#### v0.1
+
+中規模以上の実 Repository を最低1つ使用し、次の縦フローを確認する。
+
+```text
+Projectを開く
+  ↓
+Analyze
+  ↓
+Findingを確認
+  ↓
+対象コードへNavigation
+  ↓
+複数Findingを選択
+  ↓
+Copy for AI
+```
+
+確認項目:
+
+- Finding のノイズ量が実用範囲か
+- Project / Local Changes の解析時間
+- Navigation の正確性
+- Copy for AI の情報量
+- Editor 操作への影響
+
+#### v0.4
+
+Go の実 Repository を最低1つ使用し、Go Provider を追加しても Core / UI の変更が局所的であることを確認する。
+
+Go Provider checkpoint:
+
+- Universal Analyzer と Go Analyzer が同一 UI に統合される。
+- Go Provider がない環境で Core が起動する。
+- Go Provider の有無で Core API を分岐実装していない。
+- Navigation / Copy for AI が Java/Kotlin と同じ操作で使える。
+
+JS/TS Provider 追加時も同じ観点で混在 Repository を確認する。
+
+### 18.4 品質ゲート
 
 - Compile / Test 成功
 - Plugin Verifier 重大エラーなし
@@ -817,6 +917,7 @@ Python 等は v0.4 完了後の候補とする。
 - 解析中も Editor typing を阻害しない
 - ネットワーク通信が発生しない
 - Provider 不在が Repo Lens 全体の起動失敗につながらない
+- 対象マイルストーンの実 Repository smoke test が完了している
 
 ---
 
@@ -845,11 +946,11 @@ Python 等は v0.4 完了後の候補とする。
 
 ### 19.2 v0.4 実装順序
 
-1. Language Provider SPI / Capability Model
+1. Language Provider SPI / Capability Model / Optional Dependency skeleton
 2. Go Provider skeleton
 3. Go Function / Method / Parameter / Nesting Analyzer
 4. Go Navigation / Copy / mixed result integration
-5. Provider architecture checkpoint
+5. Go 実 Repository smoke test / Provider architecture checkpoint
 6. JS/TS Provider
 7. JS/TS structure Analyzer
 8. mixed-language smoke test
@@ -859,7 +960,7 @@ Python 等は v0.4 完了後の候補とする。
 ## 20. パッケージ構成案
 
 ```text
-com.repolens.intellij
+com.kanicream.repolens
 ├─ action/
 │  ├─ AnalyzeAction.kt
 │  └─ CopyFindingAction.kt
@@ -925,6 +1026,7 @@ Language Providers / Platform Adapters
 禁止事項:
 
 - Analyzer → UI component への直接依存
+- Analyzer → Clipboard / Navigation への直接依存
 - Domain Model → IntelliJ Swing UI への依存
 - Core → Go / JS / TS 固有 PSI 型への直接依存
 - Provider 不在時に class loading error を発生させる強制依存
@@ -936,6 +1038,9 @@ Language Providers / Platform Adapters
 ### v0.1
 
 - [ ] IntelliJ IDEA 上で Repo Lens Tool Window を開ける
+- [ ] Plugin ID / package root が `com.kanicream.repolens` で統一されている
+- [ ] IntelliJ IDEA 2026.1 baseline で build / test が通る
+- [ ] IntelliJ IDEA 2026.2 互換性を Plugin Verifier + smoke test で確認する
 - [ ] Current File / Project / Local Changes が動作する
 - [ ] 6つの MVP Check が設定閾値に従って Finding を生成する
 - [ ] Finding に file path / line / symbol / reason / metric が含まれる
@@ -946,7 +1051,9 @@ Language Providers / Platform Adapters
 - [ ] EDT を長時間ブロックしない
 - [ ] プラグイン自身によるネットワーク通信が存在しない
 - [ ] 設定がプロジェクトごとに保持される
+- [ ] Analyzer が UI / Clipboard / Navigation に直接依存していない
 - [ ] Plugin Verifier と主要テストが通過する
+- [ ] 実 Repository smoke test を完了する
 
 ### Language architecture
 
@@ -954,13 +1061,15 @@ Language Providers / Platform Adapters
 - [ ] Universal Analyzer は Provider 非対応言語でも動作可能とする
 - [ ] Analyzer ごとに capability を判定できる
 - [ ] Provider unavailable を正常状態として扱える
+- [ ] 言語固有 Provider は optional dependency として分離できる
 
 ### v0.4追加条件
 
-- [ ] Go Provider が実装される
+- [ ] Go Provider が optional dependency として実装される
 - [ ] Go の Function / Method / Parameter / Nesting を解析できる
 - [ ] Go Provider を追加しても Core / UI の大規模変更を必要としない
-- [ ] JS/TS Provider が実装される
+- [ ] Go の実 Repository smoke test を完了する
+- [ ] JS/TS Provider が optional dependency として実装される
 - [ ] Capability をユーザーが確認できる
 - [ ] Provider がない環境でも Repo Lens 本体が起動する
 
@@ -974,10 +1083,10 @@ Language Providers / Platform Adapters
 | OD-02 | Deep Nesting 対象構文 | if/when/loop/try/lambda 等。fixtureで確定 |
 | OD-03 | Test sources の既定扱い | 解析対象。将来別閾値を検討 |
 | OD-04 | Local Changes の未追跡ファイル | 含める方向 |
-| OD-05 | 2026.1 baseline の2026.2互換 | Plugin Verifier 結果で判断 |
 | OD-06 | Plugin名 | **Repo Lens で確定**。Marketplace公開時に表示名重複のみ確認 |
 | OD-07 | Go の reference/dependency capability | v0.4実装時に利用可能 API とノイズ量を確認して確定 |
-| OD-08 | Provider の optional dependency 実装方法 | class loading と互換性を含め v0.4 skeleton で確定 |
+
+Plugin ID / package namespace、IDE baseline、Language Provider の optional dependency 方針、Analyzer の責務境界、実 Repository smoke test は本書 v0.3 で決定済みとし、未決事項として扱わない。
 
 ---
 
@@ -1020,11 +1129,53 @@ Language Provider は v0.1 の縦ワークフローが安定した後に v0.4 �
 
 ---
 
-## 24. 参考資料
+## 24. 実装前に固定する設計判断
+
+実装開始後に変更すると構造変更の影響が大きい事項として、以下6点を事前決定とする。
+
+### 24.1 Language Provider は Optional Dependency とする
+
+Go / JS / TS などの Language Provider は Core の必須依存にしない。対象 language plugin が存在しない IDE でも Repo Lens Core と Universal Analyzer は起動・利用可能であることを必須とする。
+
+### 24.2 対応 IDE と対応言語を分離する
+
+Core compatibility と Provider compatibility を別々に管理する。「IntelliJ が言語を扱える = Repo Lens の全 Analyzer が利用できる」とは定義しない。利用可否は Analyzer capability として表示する。
+
+### 24.3 Plugin ID / package namespace を固定する
+
+- Plugin display name: `Repo Lens`
+- Repository: `repo-lens`
+- Plugin ID: `com.kanicream.repolens`
+- Kotlin package root: `com.kanicream.repolens`
+
+実装開始後は互換性上の明確な理由がない限り変更しない。
+
+### 24.4 IDE baseline を固定する
+
+初期 baseline は **IntelliJ IDEA 2026.1** とする。2026.2 は compatibility target とし、Plugin Verifier と実機 smoke test で確認する。
+
+### 24.5 Analyzer の責務境界を固定する
+
+Analyzer は `Finding` を返す解析ロジックに限定する。UI、Clipboard、Navigation、Notification を直接操作しない。これらは Application Service / Adapter / UI 層へ分離する。
+
+### 24.6 実 Repository Smoke Test を必須化する
+
+fixture / unit test のみでマイルストーン完了としない。
+
+- v0.1: 中規模以上の実 Repository で Analyze → Finding → Navigation → Copy for AI を確認する。
+- v0.4 Go: Go の実 Repository で Provider architecture と同一UXを確認する。
+- JS/TS Provider: 混在 Repository で Universal / Language Finding の統合を確認する。
+
+これら6点は実装前の基盤仕様とし、機能閾値や Severity の細部より優先して維持する。
+
+---
+
+## 25. 参考資料
 
 実装時は IntelliJ Platform の Public API を優先し、Experimental / Internal / Scheduled for Removal API の採用は必要性を明示して判断する。
 
 - [Developing a Plugin | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/developing-plugins.html)
+- [Plugin Dependencies | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/plugin-dependencies.html)
 - [Tool Window | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tool-window.html)
 - [Code Inspections | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/code-inspections.html)
 - [PSI Elements | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/psi-elements.html)
