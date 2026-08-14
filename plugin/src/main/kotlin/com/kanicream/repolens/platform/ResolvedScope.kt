@@ -22,6 +22,12 @@ internal sealed interface ResolvedScope {
      * normally hide them, because an explicit pick outranks a default filter.
      */
     data class ExplicitFiles(val files: List<VirtualFile>) : ResolvedScope
+
+    /**
+     * Files computed for the user rather than picked by them, such as the VCS changes.
+     * Exclusion rules apply, so a regenerated lock file does not become a finding.
+     */
+    data class DerivedFiles(val files: List<VirtualFile>) : ResolvedScope
 }
 
 /** Outcome of turning a scope choice into something analyzable. */

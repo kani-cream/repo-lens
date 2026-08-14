@@ -15,6 +15,9 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- Local Changes scope. Present in every JetBrains IDE; a project without a
+         configured VCS is handled at runtime, not by disabling the plugin. -->
+    <depends>com.intellij.modules.vcs</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="Repo Lens"

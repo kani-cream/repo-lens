@@ -20,6 +20,8 @@ import com.kanicream.repolens.model.Severity
 import com.kanicream.repolens.navigation.FindingNavigator
 import com.intellij.openapi.vfs.VirtualFile
 import com.kanicream.repolens.platform.ResolvedScope
+import com.kanicream.repolens.platform.ScopeResolution
+import com.kanicream.repolens.platform.ScopeResolver
 import com.kanicream.repolens.platform.VfsAnalysisContext
 import com.kanicream.repolens.text.TextLines
 import java.util.concurrent.TimeUnit
@@ -153,6 +155,26 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         )
 
         assertEquals(listOf("Anchor.kt", "Sibling.kt"), fileNames(result).sorted())
+    }
+
+    fun `test derived file lists honour the exclusion rules`() {
+        val excluded = myFixture.addFileToProject(".venv/lib/tool.py", "# TODO vendored\n").virtualFile
+        val source = myFixture.addFileToProject("src/App.kt", "// TODO mine\n").virtualFile
+
+        val result = analyze(
+            ResolvedScope.DerivedFiles(listOf(excluded, source)),
+            scopeType = AnalysisScopeType.LOCAL_CHANGES,
+        )
+
+        assertEquals(listOf("App.kt"), fileNames(result))
+    }
+
+    fun `test local changes scope is unavailable without a configured vcs`() {
+        val resolution = ScopeResolver.resolve(project, AnalysisScopeType.LOCAL_CHANGES, emptyList())
+
+        assertInstanceOf(resolution, ScopeResolution.Unavailable::class.java)
+        val reason = (resolution as ScopeResolution.Unavailable).reason
+        assertTrue(reason, reason.contains("version control", ignoreCase = true))
     }
 
     fun `test navigation opens the finding file in an editor`() {

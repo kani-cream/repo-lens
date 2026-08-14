@@ -48,6 +48,10 @@ internal class VfsAnalysisContext(
                     collector.add(file, applyExclusions = false)
                 }
             }
+
+            is ResolvedScope.DerivedFiles -> scope.files.forEach { file ->
+                if (file.isDirectory) collectRecursively(file, collector) else collector.add(file)
+            }
         }
         collector.files
     }

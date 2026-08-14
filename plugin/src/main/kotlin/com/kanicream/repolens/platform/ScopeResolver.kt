@@ -4,6 +4,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.kanicream.repolens.model.AnalysisScopeType
+import com.kanicream.repolens.vcs.VcsFacade
 
 /**
  * Turns the scope the user picked into concrete entry points.
@@ -35,6 +36,20 @@ internal object ScopeResolver {
             ?: ScopeResolution.Unavailable(
                 "Select files in the Project View and choose Analyze with Repo Lens",
             )
+
+        AnalysisScopeType.LOCAL_CHANGES -> localChanges(project)
+    }
+
+    private fun localChanges(project: Project): ScopeResolution {
+        if (!VcsFacade.hasActiveVcs(project)) {
+            return ScopeResolution.Unavailable("No version control system is configured for this project")
+        }
+        val changed = VcsFacade.locallyChangedFiles(project)
+        return if (changed.isEmpty()) {
+            ScopeResolution.Unavailable("No local changes to analyze")
+        } else {
+            ScopeResolution.Resolved(ResolvedScope.DerivedFiles(changed))
+        }
     }
 
     private fun currentFile(project: Project): VirtualFile? =
