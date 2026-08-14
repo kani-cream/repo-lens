@@ -1,7 +1,9 @@
 package com.kanicream.repolens.ui
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -17,7 +19,7 @@ import com.kanicream.repolens.model.AnalysisScopeType
 import com.kanicream.repolens.model.Finding
 import com.kanicream.repolens.model.Severity
 import com.kanicream.repolens.navigation.FindingNavigator
-import com.kanicream.repolens.services.AnalysisListener
+import com.kanicream.repolens.services.RepoLensAnalysisListener
 import com.kanicream.repolens.services.RepoLensAnalysisService
 import java.awt.BorderLayout
 import java.awt.FlowLayout
@@ -37,7 +39,8 @@ import javax.swing.ListSelectionModel
  * pane, and Copy for AI. This class only handles user interaction and rendering; all
  * analysis, navigation, and clipboard work is delegated to the application services.
  */
-internal class RepoLensPanel(private val project: Project) : JPanel(BorderLayout()), AnalysisListener {
+internal class RepoLensPanel(private val project: Project) :
+    JPanel(BorderLayout()), RepoLensAnalysisListener, Disposable {
 
     private val tableModel = FindingTableModel()
     private val table = JBTable(tableModel)
@@ -48,10 +51,16 @@ internal class RepoLensPanel(private val project: Project) : JPanel(BorderLayout
     private val stopButton = JButton("Stop")
     private val copyForAiButton = JButton("Copy for AI")
 
+    /** Selection captured by the Project View action, re-used when Analyze is pressed again. */
+    private var selectedFiles: List<VirtualFile> = emptyList()
+
     init {
         buildUi()
         wireActions()
+        project.messageBus.connect(this).subscribe(RepoLensAnalysisListener.TOPIC, this)
     }
+
+    override fun dispose() = Unit
 
     private fun buildUi() {
         scopeCombo.renderer = textListCellRenderer { it.displayName }
@@ -109,12 +118,23 @@ internal class RepoLensPanel(private val project: Project) : JPanel(BorderLayout
     }
 
     private fun startAnalysis() {
-        setRunning(true)
-        statusLabel.text = "Analyzing…"
-        RepoLensAnalysisService.getInstance(project).startProjectAnalysis(this)
+        RepoLensAnalysisService.getInstance(project).startAnalysis(selectedScope(), selectedFiles)
     }
 
-    override fun onFinished(result: AnalysisResult) {
+    /** Runs an analysis for files picked in the Project View. */
+    fun analyzeSelection(files: List<VirtualFile>) {
+        selectedFiles = files
+        scopeCombo.selectedItem = AnalysisScopeType.SELECTED_FILES
+        RepoLensAnalysisService.getInstance(project).startAnalysis(AnalysisScopeType.SELECTED_FILES, files)
+    }
+
+    override fun analysisStarted(scopeType: AnalysisScopeType) {
+        scopeCombo.selectedItem = scopeType
+        setRunning(true)
+        statusLabel.text = "Analyzing ${scopeType.displayName.lowercase()}…"
+    }
+
+    override fun analysisFinished(scopeType: AnalysisScopeType, result: AnalysisResult) {
         tableModel.setFindings(result.findings)
         setRunning(false)
         val counts = "Total ${result.findings.size} | " +
@@ -128,14 +148,14 @@ internal class RepoLensPanel(private val project: Project) : JPanel(BorderLayout
         detailArea.text = ""
     }
 
-    override fun onCancelled() {
+    override fun analysisCancelled() {
         setRunning(false)
         statusLabel.text = "Analysis cancelled"
     }
 
-    override fun onFailed(error: Throwable) {
+    override fun analysisFailed(reason: String) {
         setRunning(false)
-        statusLabel.text = "Analysis failed: ${error.javaClass.simpleName}"
+        statusLabel.text = reason
     }
 
     private fun setRunning(running: Boolean) {
@@ -165,12 +185,13 @@ internal class RepoLensPanel(private val project: Project) : JPanel(BorderLayout
     private fun copySelectionForAi() {
         val selected = selectedFindings()
         if (selected.isEmpty()) return
-        val scopeName = (scopeCombo.selectedItem as? AnalysisScopeType)?.displayName
-            ?: AnalysisScopeType.PROJECT.displayName
-        CopyForAiService.getInstance(project).copyForAi(selected, scopeName) {
+        CopyForAiService.getInstance(project).copyForAi(selected, selectedScope().displayName) {
             statusLabel.text = "Copied ${selected.size} finding(s) as Markdown"
         }
     }
+
+    private fun selectedScope(): AnalysisScopeType =
+        scopeCombo.selectedItem as? AnalysisScopeType ?: AnalysisScopeType.PROJECT
 
     private fun selectedFindings(): List<Finding> =
         table.selectedRows

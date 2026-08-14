@@ -5,6 +5,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
@@ -12,7 +13,9 @@ import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.AnalysisScopeType
-import com.kanicream.repolens.platform.ProjectAnalysisContext
+import com.kanicream.repolens.platform.ScopeResolution
+import com.kanicream.repolens.platform.ScopeResolver
+import com.kanicream.repolens.platform.VfsAnalysisContext
 import com.kanicream.repolens.settings.RepoLensSettings
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -20,9 +23,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * Application service that drives analysis runs: it snapshots the settings, resolves the
- * scope through platform adapters, runs the orchestrator on a background coroutine with
- * a cancellable progress indicator, and reports back on the EDT.
+ * Drives analysis runs: snapshots the settings, resolves the scope through platform
+ * adapters, runs the orchestrator on a background coroutine under a cancellable progress
+ * indicator, and publishes the outcome on the EDT.
  */
 @Service(Service.Level.PROJECT)
 class RepoLensAnalysisService(
@@ -37,31 +40,54 @@ class RepoLensAnalysisService(
     @Volatile
     private var currentJob: Job? = null
 
-    /** Starts a Project-scope analysis, cancelling any run still in flight. */
-    fun startProjectAnalysis(listener: AnalysisListener) {
+    /**
+     * Starts a run for [scopeType], cancelling any run still in flight. Must be called on
+     * the EDT: resolving Current File and Selected Files reads live UI state.
+     *
+     * [selectedFiles] carries the explicit selection for [AnalysisScopeType.SELECTED_FILES]
+     * and is ignored by the other scopes.
+     */
+    fun startAnalysis(scopeType: AnalysisScopeType, selectedFiles: List<VirtualFile> = emptyList()) {
         stop()
-        val request = AnalysisRequest(
-            scopeType = AnalysisScopeType.PROJECT,
-            settings = RepoLensSettings.getInstance(project).snapshot(),
-        )
-        currentJob = coroutineScope.launch {
-            try {
-                val result = withBackgroundProgress(project, "Repo Lens: analyzing project") {
-                    orchestrator.analyze(ProjectAnalysisContext(project, request))
+        val publisher = project.messageBus.syncPublisher(RepoLensAnalysisListener.TOPIC)
+
+        when (val resolution = ScopeResolver.resolve(project, scopeType, selectedFiles)) {
+            is ScopeResolution.Unavailable -> publisher.analysisFailed(resolution.reason)
+
+            is ScopeResolution.Resolved -> {
+                publisher.analysisStarted(scopeType)
+                val request = AnalysisRequest(
+                    scopeType = scopeType,
+                    settings = RepoLensSettings.getInstance(project).snapshot(),
+                )
+                val context = VfsAnalysisContext(project, request, resolution.scope)
+                currentJob = coroutineScope.launch {
+                    try {
+                        val result = withBackgroundProgress(project, progressTitle(scopeType)) {
+                            orchestrator.analyze(context)
+                        }
+                        onEdt { publish { it.analysisFinished(scopeType, result) } }
+                    } catch (e: CancellationException) {
+                        onEdt { publish { it.analysisCancelled() } }
+                        throw e
+                    } catch (e: Throwable) {
+                        LOG.warn("Repo Lens analysis failed", e)
+                        onEdt { publish { it.analysisFailed("Analysis failed: ${e.javaClass.simpleName}") } }
+                    }
                 }
-                onEdt { listener.onFinished(result) }
-            } catch (e: CancellationException) {
-                onEdt { listener.onCancelled() }
-                throw e
-            } catch (e: Throwable) {
-                LOG.warn("Repo Lens analysis failed", e)
-                onEdt { listener.onFailed(e) }
             }
         }
     }
 
     fun stop() {
         currentJob?.cancel()
+    }
+
+    private fun progressTitle(scopeType: AnalysisScopeType): String =
+        "Repo Lens: analyzing ${scopeType.displayName.lowercase()}"
+
+    private fun publish(action: (RepoLensAnalysisListener) -> Unit) {
+        action(project.messageBus.syncPublisher(RepoLensAnalysisListener.TOPIC))
     }
 
     private fun onEdt(action: () -> Unit) {

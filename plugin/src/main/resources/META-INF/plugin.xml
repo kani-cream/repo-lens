@@ -26,4 +26,13 @@
                              displayName="Repo Lens"
                              instance="com.kanicream.repolens.settings.RepoLensConfigurable"/>
     </extensions>
+
+    <actions>
+        <action id="com.kanicream.repolens.AnalyzeSelection"
+                class="com.kanicream.repolens.action.AnalyzeSelectionAction"
+                text="Analyze with Repo Lens"
+                description="Collect Repo Lens review candidates for the selected files">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

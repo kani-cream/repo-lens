@@ -1,11 +1,14 @@
 package com.kanicream.repolens.model
 
 /**
- * Analysis scopes. v0.1's first vertical slice implements [PROJECT] only; the remaining
- * v0.1 scopes (Current File, Selected Files, Module, Local Changes) extend this enum.
+ * Scopes a user can analyze. Local Changes, the remaining v0.1 scope, is added once the
+ * VCS adapter exists; nothing here depends on how a scope is resolved.
  */
 enum class AnalysisScopeType(val displayName: String) {
     PROJECT("Project"),
+    CURRENT_FILE("Current File"),
+    SELECTED_FILES("Selected Files"),
+    MODULE("Module"),
 }
 
 /** Immutable description of one analysis run. */

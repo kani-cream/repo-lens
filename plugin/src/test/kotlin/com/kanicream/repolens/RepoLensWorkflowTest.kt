@@ -18,34 +18,43 @@ import com.kanicream.repolens.model.CopySettings
 import com.kanicream.repolens.model.SettingsSnapshot
 import com.kanicream.repolens.model.Severity
 import com.kanicream.repolens.navigation.FindingNavigator
-import com.kanicream.repolens.platform.ProjectAnalysisContext
+import com.intellij.openapi.vfs.VirtualFile
+import com.kanicream.repolens.platform.ResolvedScope
+import com.kanicream.repolens.platform.VfsAnalysisContext
 import com.kanicream.repolens.text.TextLines
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 
 /**
- * Fixture test for the v0.1 vertical slice: Project scope analysis over real (light
- * fixture) files, then navigation and Copy-for-AI formatting from the produced findings.
- *
- * NOTE: authored in an environment without access to the IntelliJ Platform test
- * runtime; run locally / in CI with JetBrains repositories available.
+ * Fixture test for the v0.1 workflow: scope resolution over real (light fixture) files,
+ * then navigation and Copy-for-AI formatting from the produced findings.
  */
 class RepoLensWorkflowTest : BasePlatformTestCase() {
 
-    private fun analyzeProject(settings: SettingsSnapshot): AnalysisResult {
+    private fun analyze(
+        scope: ResolvedScope,
+        settings: SettingsSnapshot = SettingsSnapshot(),
+        scopeType: AnalysisScopeType = AnalysisScopeType.PROJECT,
+    ): AnalysisResult {
         val orchestrator = AnalysisOrchestrator(
             AnalyzerRegistry(listOf(LargeFileAnalyzer(), TodoMarkerAnalyzer())),
         )
-        val request = AnalysisRequest(AnalysisScopeType.PROJECT, settings)
+        val request = AnalysisRequest(scopeType, settings)
         // The suspending readAction contract forbids the EDT (where light tests run),
         // so the analysis executes on a pooled thread like it does in production.
         val future = ApplicationManager.getApplication().executeOnPooledThread<AnalysisResult> {
             runBlocking {
-                orchestrator.analyze(ProjectAnalysisContext(project, request))
+                orchestrator.analyze(VfsAnalysisContext(project, request, scope))
             }
         }
         return future.get(60, TimeUnit.SECONDS)
     }
+
+    private fun analyzeProject(settings: SettingsSnapshot): AnalysisResult =
+        analyze(ResolvedScope.WholeProject, settings)
+
+    private fun fileNames(result: AnalysisResult): List<String> =
+        result.findings.map { it.location.filePath.substringAfterLast('/') }.distinct()
 
     fun `test project analysis finds large file and todo markers`() {
         myFixture.addFileToProject("src/Big.txt", (1..30).joinToString("\n") { "line $it" })
@@ -95,6 +104,55 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         ).findings
 
         assertEquals(listOf("App.kt"), findings.map { it.location.filePath.substringAfterLast('/') })
+    }
+
+    fun `test current file scope analyzes only the given file`() {
+        val target = myFixture.addFileToProject("src/Target.kt", "// TODO mine\n").virtualFile
+        myFixture.addFileToProject("src/Other.kt", "// TODO other\n")
+
+        val result = analyze(
+            ResolvedScope.ExplicitFiles(listOf(target)),
+            scopeType = AnalysisScopeType.CURRENT_FILE,
+        )
+
+        assertEquals(listOf("Target.kt"), fileNames(result))
+    }
+
+    fun `test selected files scope expands directories`() {
+        val directory = myFixture.addFileToProject("src/feature/A.kt", "// TODO a\n").virtualFile.parent
+        myFixture.addFileToProject("src/feature/nested/B.kt", "// TODO b\n")
+        myFixture.addFileToProject("src/Outside.kt", "// TODO outside\n")
+
+        val result = analyze(
+            ResolvedScope.ExplicitFiles(listOf(directory)),
+            scopeType = AnalysisScopeType.SELECTED_FILES,
+        )
+
+        assertEquals(listOf("A.kt", "B.kt"), fileNames(result).sorted())
+    }
+
+    fun `test explicitly selected file is analyzed even when excluded by default`() {
+        val excluded: VirtualFile =
+            myFixture.addFileToProject(".venv/lib/tool.py", "# TODO vendored\n").virtualFile
+
+        val result = analyze(
+            ResolvedScope.ExplicitFiles(listOf(excluded)),
+            scopeType = AnalysisScopeType.SELECTED_FILES,
+        )
+
+        assertEquals(listOf("tool.py"), fileNames(result))
+    }
+
+    fun `test module scope covers the module owning the anchor file`() {
+        val anchor = myFixture.addFileToProject("src/Anchor.kt", "// TODO anchor\n").virtualFile
+        myFixture.addFileToProject("src/Sibling.kt", "// TODO sibling\n")
+
+        val result = analyze(
+            ResolvedScope.ContainingModule(anchor),
+            scopeType = AnalysisScopeType.MODULE,
+        )
+
+        assertEquals(listOf("Anchor.kt", "Sibling.kt"), fileNames(result).sorted())
     }
 
     fun `test navigation opens the finding file in an editor`() {
