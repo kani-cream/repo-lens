@@ -1,8 +1,11 @@
 package com.kanicream.repolens.platform
 
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.kanicream.repolens.analysis.AnalyzedFile
+import com.kanicream.repolens.structure.CodeStructure
+import com.kanicream.repolens.structure.CodeStructureProvider
 import com.kanicream.repolens.text.TextLines
 
 /**
@@ -14,6 +17,7 @@ import com.kanicream.repolens.text.TextLines
  * The platform's own VFS caching keeps repeated reads cheap.
  */
 internal class VfsAnalyzedFile(
+    private val project: Project,
     private val file: VirtualFile,
     override val relativePath: String,
 ) : AnalyzedFile {
@@ -21,6 +25,9 @@ internal class VfsAnalyzedFile(
     override suspend fun lineCount(): Int? = text()?.let(TextLines::physicalLineCount)
 
     override suspend fun lines(): List<String>? = text()?.let(TextLines::split)
+
+    override suspend fun structure(): CodeStructure? =
+        readAction { CodeStructureProvider.structureOf(project, file) }
 
     private suspend fun text(): String? = readAction { VfsText.load(file) }
 }

@@ -82,7 +82,7 @@ internal class VfsAnalysisContext(
             if (file.fileType.isBinary) return
             val relativePath = ProjectPaths.relativePath(project, file)
             if (applyExclusions && exclusions.isExcluded(relativePath)) return
-            files += VfsAnalyzedFile(file, relativePath)
+            files += VfsAnalyzedFile(project, file, relativePath)
         }
     }
 }

@@ -9,6 +9,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
+import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
+import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
 import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.model.AnalysisRequest
@@ -34,7 +36,14 @@ class RepoLensAnalysisService(
 ) {
 
     private val orchestrator = AnalysisOrchestrator(
-        AnalyzerRegistry(listOf(LargeFileAnalyzer(), TodoMarkerAnalyzer())),
+        AnalyzerRegistry(
+            listOf(
+                LargeFileAnalyzer(),
+                TodoMarkerAnalyzer(),
+                LargeClassAnalyzer(),
+                LargeMethodAnalyzer(),
+            ),
+        ),
     )
 
     @Volatile

@@ -5,6 +5,8 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
+import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
+import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
 import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.format.AiCopyItem
@@ -39,7 +41,14 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         scopeType: AnalysisScopeType = AnalysisScopeType.PROJECT,
     ): AnalysisResult {
         val orchestrator = AnalysisOrchestrator(
-            AnalyzerRegistry(listOf(LargeFileAnalyzer(), TodoMarkerAnalyzer())),
+            AnalyzerRegistry(
+                listOf(
+                    LargeFileAnalyzer(),
+                    TodoMarkerAnalyzer(),
+                    LargeClassAnalyzer(),
+                    LargeMethodAnalyzer(),
+                ),
+            ),
         )
         val request = AnalysisRequest(scopeType, settings)
         // The suspending readAction contract forbids the EDT (where light tests run),
@@ -175,6 +184,42 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         assertInstanceOf(resolution, ScopeResolution.Unavailable::class.java)
         val reason = (resolution as ScopeResolution.Unavailable).reason
         assertTrue(reason, reason.contains("version control", ignoreCase = true))
+    }
+
+    fun `test structure analyzers report oversized java declarations`() {
+        val body = (1..12).joinToString("\n") { "        int v$it = $it;" }
+        myFixture.addFileToProject(
+            "src/Sample.java",
+            "public class Sample {\n    void big() {\n$body\n    }\n}\n",
+        )
+
+        val result = analyze(
+            ResolvedScope.WholeProject,
+            SettingsSnapshot(largeClassLineThreshold = 10, largeMethodLineThreshold = 5),
+        )
+
+        val checks = result.findings.map { it.checkName }.distinct().sorted()
+        assertEquals(listOf("Large Class", "Large Method"), checks)
+
+        val method = result.findings.single { it.analyzerId == LargeMethodAnalyzer.ID }
+        assertEquals("Sample.big()", method.symbol?.displayName)
+        assertEquals(5.0, method.threshold)
+        assertTrue(method.message, (method.measuredValue ?: 0.0) > 5.0)
+
+        val type = result.findings.single { it.analyzerId == LargeClassAnalyzer.ID }
+        assertEquals("Sample", type.symbol?.displayName)
+    }
+
+    fun `test structure analyzers stay silent for languages without a provider`() {
+        myFixture.addFileToProject("src/notes.txt", (1..40).joinToString("\n") { "line $it" })
+
+        val result = analyze(
+            ResolvedScope.WholeProject,
+            SettingsSnapshot(largeClassLineThreshold = 1, largeMethodLineThreshold = 1),
+        )
+
+        assertEmpty(result.findings.filter { it.analyzerId == LargeClassAnalyzer.ID })
+        assertEmpty(result.findings.filter { it.analyzerId == LargeMethodAnalyzer.ID })
     }
 
     fun `test navigation opens the finding file in an editor`() {

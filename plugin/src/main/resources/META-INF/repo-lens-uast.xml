@@ -1,0 +1,12 @@
+<idea-plugin>
+    <!--
+      Loaded only when the Java plugin is available, because UAST ships inside it.
+      Repo Lens Core and the Tier 0 analyzers work without this file, so IDEs without
+      Java (GoLand, WebStorm) still load the plugin - Provider unavailable is a normal
+      state, see docs/design.md 4.6.
+    -->
+    <extensions defaultExtensionNs="com.kanicream.repolens">
+        <codeStructureProvider
+            implementation="com.kanicream.repolens.structure.uast.UastCodeStructureProvider"/>
+    </extensions>
+</idea-plugin>

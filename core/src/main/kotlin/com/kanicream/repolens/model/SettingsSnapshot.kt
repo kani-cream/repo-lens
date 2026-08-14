@@ -21,6 +21,8 @@ data class CopySettings(
  */
 data class SettingsSnapshot(
     val largeFileLineThreshold: Int = DEFAULT_LARGE_FILE_LINE_THRESHOLD,
+    val largeClassLineThreshold: Int = DEFAULT_LARGE_CLASS_LINE_THRESHOLD,
+    val largeMethodLineThreshold: Int = DEFAULT_LARGE_METHOD_LINE_THRESHOLD,
     val todoMarkers: List<String> = DEFAULT_TODO_MARKERS,
     val disabledAnalyzerIds: Set<String> = emptySet(),
     /** Glob patterns for paths kept out of analysis; see [PathExclusions]. */
@@ -29,6 +31,8 @@ data class SettingsSnapshot(
 ) {
     companion object {
         const val DEFAULT_LARGE_FILE_LINE_THRESHOLD: Int = 800
+        const val DEFAULT_LARGE_CLASS_LINE_THRESHOLD: Int = 500
+        const val DEFAULT_LARGE_METHOD_LINE_THRESHOLD: Int = 80
         val DEFAULT_TODO_MARKERS: List<String> = listOf("TODO", "FIXME")
     }
 }

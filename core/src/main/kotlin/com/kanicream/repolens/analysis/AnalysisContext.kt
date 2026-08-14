@@ -2,6 +2,7 @@ package com.kanicream.repolens.analysis
 
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.SettingsSnapshot
+import com.kanicream.repolens.structure.CodeStructure
 
 /**
  * Everything an analyzer may see during one run.
@@ -37,4 +38,10 @@ interface AnalyzedFile {
 
     /** File text as lines without terminators, or `null` when unavailable. */
     suspend fun lines(): List<String>?
+
+    /**
+     * Declarations in this file, or `null` when no language provider can parse it.
+     * A missing structure is a normal state, not an error: Tier 0 analysis still works.
+     */
+    suspend fun structure(): CodeStructure? = null
 }

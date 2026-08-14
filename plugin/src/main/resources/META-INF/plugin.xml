@@ -19,6 +19,15 @@
          configured VCS is handled at runtime, not by disabling the plugin. -->
     <depends>com.intellij.modules.vcs</depends>
 
+    <!-- Structure analysis needs UAST, which ships inside the Java plugin. Optional so
+         Repo Lens Core still loads in IDEs without Java. -->
+    <depends optional="true" config-file="repo-lens-uast.xml">com.intellij.modules.java</depends>
+
+    <extensionPoints>
+        <extensionPoint name="codeStructureProvider" interface="com.kanicream.repolens.structure.CodeStructureProvider"
+                        dynamic="true"/>
+    </extensionPoints>
+
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="Repo Lens"
                     anchor="bottom"

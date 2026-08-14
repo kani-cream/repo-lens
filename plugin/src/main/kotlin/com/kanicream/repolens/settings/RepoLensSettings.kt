@@ -21,6 +21,8 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
 
     class State {
         var largeFileLineThreshold: Int = SettingsSnapshot.DEFAULT_LARGE_FILE_LINE_THRESHOLD
+        var largeClassLineThreshold: Int = SettingsSnapshot.DEFAULT_LARGE_CLASS_LINE_THRESHOLD
+        var largeMethodLineThreshold: Int = SettingsSnapshot.DEFAULT_LARGE_METHOD_LINE_THRESHOLD
         var todoMarkers: MutableList<String> = SettingsSnapshot.DEFAULT_TODO_MARKERS.toMutableList()
         var disabledAnalyzerIds: MutableList<String> = mutableListOf()
         var excludePatterns: MutableList<String> = PathExclusions.DEFAULT_PATTERNS.toMutableList()
@@ -38,6 +40,8 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
 
     fun snapshot(): SettingsSnapshot = SettingsSnapshot(
         largeFileLineThreshold = current.largeFileLineThreshold,
+        largeClassLineThreshold = current.largeClassLineThreshold,
+        largeMethodLineThreshold = current.largeMethodLineThreshold,
         todoMarkers = current.todoMarkers.toList(),
         disabledAnalyzerIds = current.disabledAnalyzerIds.toSet(),
         excludePatterns = current.excludePatterns.toList(),
