@@ -4,7 +4,9 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.OnePixelSplitter
+import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -13,6 +15,7 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.clipboard.CopyForAiService
+import com.kanicream.repolens.filter.FindingFilter
 import com.kanicream.repolens.format.MetricFormat
 import com.kanicream.repolens.model.AnalysisResult
 import com.kanicream.repolens.model.AnalysisScopeType
@@ -23,6 +26,7 @@ import com.kanicream.repolens.services.RepoLensAnalysisListener
 import com.kanicream.repolens.services.RepoLensAnalysisService
 import java.awt.BorderLayout
 import java.awt.FlowLayout
+import java.awt.GridLayout
 import java.awt.event.ActionEvent
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
@@ -33,6 +37,7 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
+import javax.swing.event.DocumentEvent
 
 /**
  * Repo Lens tool window content: scope selector + Analyze/Stop, findings table, detail
@@ -47,12 +52,21 @@ internal class RepoLensPanel(private val project: Project) :
     private val detailArea = JBTextArea()
     private val statusLabel = JBLabel("Ready")
     private val scopeCombo = ComboBox(AnalysisScopeType.entries.toTypedArray())
+    private val searchField = SearchTextField()
+    private val severityCombo = ComboBox(SEVERITY_CHOICES.toTypedArray())
+    private val checkCombo = ComboBox(arrayOf(ALL_CHECKS))
     private val analyzeButton = JButton("Analyze")
     private val stopButton = JButton("Stop")
     private val copyForAiButton = JButton("Copy for AI")
 
     /** Selection captured by the Project View action, re-used when Analyze is pressed again. */
     private var selectedFiles: List<VirtualFile> = emptyList()
+
+    /** Unfiltered result of the last run; filters never trigger a re-analysis. */
+    private var allFindings: List<Finding> = emptyList()
+
+    /** Guards against filtering while the Check combo is being rebuilt. */
+    private var rebuildingFilters = false
 
     init {
         buildUi()
@@ -76,13 +90,28 @@ internal class RepoLensPanel(private val project: Project) :
         stopButton.isEnabled = false
         copyForAiButton.isEnabled = false
 
-        val toolbar = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(4))).apply {
+        searchField.textEditor.emptyText.setText("Search findings")
+        severityCombo.renderer = textListCellRenderer { it.label }
+        checkCombo.renderer = textListCellRenderer { it }
+
+        val actionRow = row().apply {
             add(JBLabel("Scope:"))
             add(scopeCombo)
             add(analyzeButton)
             add(stopButton)
             add(copyForAiButton)
+        }
+        val filterRow = row().apply {
+            add(searchField)
+            add(JBLabel("Severity:"))
+            add(severityCombo)
+            add(JBLabel("Check:"))
+            add(checkCombo)
             add(statusLabel)
+        }
+        val toolbar = JPanel(GridLayout(2, 1)).apply {
+            add(actionRow)
+            add(filterRow)
         }
 
         val splitter = OnePixelSplitter(true, 0.7f).apply {
@@ -94,10 +123,19 @@ internal class RepoLensPanel(private val project: Project) :
         add(splitter, BorderLayout.CENTER)
     }
 
+    private fun row(): JPanel =
+        JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(6), JBUI.scale(2)))
+
     private fun wireActions() {
         analyzeButton.addActionListener { startAnalysis() }
         stopButton.addActionListener { RepoLensAnalysisService.getInstance(project).stop() }
         copyForAiButton.addActionListener { copySelectionForAi() }
+
+        searchField.addDocumentListener(object : DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) = applyFilters()
+        })
+        severityCombo.addActionListener { applyFilters() }
+        checkCombo.addActionListener { applyFilters() }
 
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) onSelectionChanged()
@@ -135,17 +173,57 @@ internal class RepoLensPanel(private val project: Project) :
     }
 
     override fun analysisFinished(scopeType: AnalysisScopeType, result: AnalysisResult) {
-        tableModel.setFindings(result.findings)
+        allFindings = result.findings
+        failedAnalyzerCount = result.failures.size
         setRunning(false)
-        val counts = "Total ${result.findings.size} | " +
-            "Warning ${result.countBySeverity(Severity.WARNING)} | " +
-            "Info ${result.countBySeverity(Severity.INFO)}"
-        statusLabel.text = if (result.failures.isEmpty()) {
-            counts
-        } else {
-            "$counts | ${result.failures.size} analyzer(s) failed"
-        }
+        repopulateCheckFilter()
+        applyFilters()
         detailArea.text = ""
+    }
+
+    /** Keeps the Check filter in step with the checks that actually produced findings. */
+    private fun repopulateCheckFilter() {
+        val previous = checkCombo.selectedItem as? String
+        val checks = allFindings.map { it.checkName }.distinct().sorted()
+        rebuildingFilters = true
+        try {
+            checkCombo.removeAllItems()
+            checkCombo.addItem(ALL_CHECKS)
+            checks.forEach(checkCombo::addItem)
+            checkCombo.selectedItem = if (previous != null && previous in checks) previous else ALL_CHECKS
+        } finally {
+            rebuildingFilters = false
+        }
+    }
+
+    private fun currentFilter(): FindingFilter {
+        val severity = (severityCombo.selectedItem as? SeverityChoice)?.severity
+        val check = (checkCombo.selectedItem as? String)?.takeUnless { it == ALL_CHECKS }
+        return FindingFilter(
+            searchText = searchField.text,
+            severities = setOfNotNull(severity),
+            checkNames = setOfNotNull(check),
+        )
+    }
+
+    private fun applyFilters() {
+        if (rebuildingFilters) return
+        val filter = currentFilter()
+        val visible = filter.apply(allFindings)
+        tableModel.setFindings(visible)
+        statusLabel.text = statusText(filter, visible)
+        onSelectionChanged()
+    }
+
+    private fun statusText(filter: FindingFilter, visible: List<Finding>): String {
+        val shown = if (filter.isActive && visible.size != allFindings.size) {
+            "Showing ${visible.size} of ${allFindings.size}"
+        } else {
+            "Total ${allFindings.size}"
+        }
+        val counts = "$shown | Warning ${visible.count { it.severity == Severity.WARNING }} | " +
+            "Info ${visible.count { it.severity == Severity.INFO }}"
+        return if (failedAnalyzerCount == 0) counts else "$counts | $failedAnalyzerCount analyzer(s) failed"
     }
 
     override fun analysisCancelled() {
@@ -157,6 +235,8 @@ internal class RepoLensPanel(private val project: Project) :
         setRunning(false)
         statusLabel.text = reason
     }
+
+    private var failedAnalyzerCount = 0
 
     private fun setRunning(running: Boolean) {
         analyzeButton.isEnabled = !running
@@ -218,7 +298,15 @@ internal class RepoLensPanel(private val project: Project) :
         }
     }
 
+    /** A Severity choice in the filter, including the "all" option. */
+    private data class SeverityChoice(val label: String, val severity: Severity?)
+
     companion object {
         private const val NAVIGATE_ACTION_KEY = "repoLens.navigateToFinding"
+        private const val ALL_CHECKS = "All checks"
+
+        private val SEVERITY_CHOICES: List<SeverityChoice> =
+            listOf(SeverityChoice("All", null)) +
+                Severity.entries.map { SeverityChoice(it.displayName, it) }
     }
 }
