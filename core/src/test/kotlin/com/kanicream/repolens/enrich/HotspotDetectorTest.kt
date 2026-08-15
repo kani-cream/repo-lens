@@ -63,6 +63,16 @@ class HotspotDetectorTest {
     }
 
     @Test
+    fun `a circular dependency finding alone never makes a hotspot`() {
+        // The cycle finding models a package group; its location is only a navigation
+        // anchor, so crediting that one file would misattribute the whole group.
+        val findings = listOf(finding("RL-D001", "Circular Dependency", "a.kt"))
+        val history = mapOf("a.kt" to FileHistory(50, 5, 0))
+
+        assertTrue(detect(findings, history).isEmpty())
+    }
+
+    @Test
     fun `files below the commit threshold are not hotspots`() {
         val findings = listOf(finding("RL-M001", "Large Function / Method", "a.kt"))
         val history = mapOf("a.kt" to FileHistory(2, 1, 0))

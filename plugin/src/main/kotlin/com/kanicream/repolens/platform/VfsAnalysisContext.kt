@@ -12,7 +12,9 @@ import com.intellij.openapi.vfs.VirtualFileVisitor
 import com.kanicream.repolens.analysis.AnalysisContext
 import com.kanicream.repolens.analysis.AnalyzedFile
 import com.kanicream.repolens.model.AnalysisRequest
+import com.kanicream.repolens.model.ChangeStatus
 import com.kanicream.repolens.model.FileChangeInfo
+import com.kanicream.repolens.text.TextLines
 import com.kanicream.repolens.scope.PathExclusions
 import com.kanicream.repolens.vcs.BranchDiffProvider
 import com.kanicream.repolens.vcs.BranchDiffResult
@@ -56,12 +58,24 @@ internal class VfsAnalysisContext(
             is BranchDiffResult.Success -> result
         }
         return readAction {
-            success.files.mapNotNull { (file, change) ->
+            val diffed = success.files.mapNotNull { (file, change) ->
                 if (!file.isValid || file.isDirectory || file.fileType.isBinary) return@mapNotNull null
                 val relativePath = ProjectPaths.relativePath(project, file)
                 if (exclusions.isExcluded(relativePath)) return@mapNotNull null
                 VfsAnalyzedFile(project, file, relativePath, change)
             }
+            // The whole content of an untracked file is the addition.
+            val untracked = success.untracked.mapNotNull { file ->
+                if (!file.isValid || file.isDirectory || file.fileType.isBinary) return@mapNotNull null
+                val relativePath = ProjectPaths.relativePath(project, file)
+                if (exclusions.isExcluded(relativePath)) return@mapNotNull null
+                val lineCount = VfsText.load(file)?.let(TextLines::physicalLineCount) ?: 0
+                VfsAnalyzedFile(
+                    project, file, relativePath,
+                    FileChangeInfo(ChangeStatus.ADDED, addedLines = lineCount, deletedLines = 0),
+                )
+            }
+            diffed + untracked
         }
     }
 

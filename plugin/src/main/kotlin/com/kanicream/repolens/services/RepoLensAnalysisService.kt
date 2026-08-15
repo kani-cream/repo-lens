@@ -69,10 +69,15 @@ class RepoLensAnalysisService(
                 val context = VfsAnalysisContext(project, request, resolution.scope)
                 currentJob = coroutineScope.launch {
                     try {
+                        var enrichMillis = 0L
                         val result = withBackgroundProgress(project, progressTitle(scopeType)) {
-                            enrichWithGitEvidence(orchestrator.analyze(context), settingsSnapshot)
+                            val analyzed = orchestrator.analyze(context)
+                            val enrichStart = kotlin.time.TimeSource.Monotonic.markNow()
+                            enrichWithGitEvidence(analyzed, settingsSnapshot).also {
+                                enrichMillis = enrichStart.elapsedNow().inWholeMilliseconds
+                            }
                         }
-                        logDiagnostics(scopeType, result)
+                        logDiagnostics(scopeType, result, enrichMillis)
                         onEdt { publish { it.analysisFinished(scopeType, result) } }
                     } catch (e: CancellationException) {
                         onEdt { publish { it.analysisCancelled() } }
@@ -139,11 +144,15 @@ class RepoLensAnalysisService(
     }
 
     /** Analyzer IDs, counts and timings only - never file content (design 15.1). */
-    private fun logDiagnostics(scopeType: AnalysisScopeType, result: com.kanicream.repolens.model.AnalysisResult) {
+    private fun logDiagnostics(
+        scopeType: AnalysisScopeType,
+        result: com.kanicream.repolens.model.AnalysisResult,
+        enrichMillis: Long,
+    ) {
         val timings = result.elapsedByAnalyzer.entries.joinToString(" ") { "${it.key}=${it.value}ms" }
         LOG.info(
             "analysis scope=${scopeType.name} findings=${result.findings.size} " +
-                "failures=${result.failures.size} $timings",
+                "failures=${result.failures.size} $timings enrich=${enrichMillis}ms",
         )
     }
 

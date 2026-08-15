@@ -1,6 +1,5 @@
 package com.kanicream.repolens.enrich
 
-import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.structure.DeepNestingAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
@@ -32,13 +31,18 @@ object HotspotDetector {
     const val METADATA_CHECKS: String = "hotspot.checks"
     const val METADATA_SCORE: String = "hotspot.score"
 
-    /** Checks that count as structural evidence for a hotspot. */
+    /**
+     * Checks that count as structural evidence for a hotspot. Circular Dependency is
+     * deliberately absent: its finding models a whole package group and its location is
+     * just a navigation anchor, so counting it would credit one arbitrary file of the
+     * cycle and none of the others. Keeping the score built from genuinely file-scoped
+     * findings keeps it explainable.
+     */
     private val STRUCTURAL_ANALYZER_IDS = setOf(
         LargeClassAnalyzer.ID,
         LargeMethodAnalyzer.ID,
         ParameterCountAnalyzer.ID,
         DeepNestingAnalyzer.ID,
-        CircularDependencyAnalyzer.ID,
     )
 
     fun detect(

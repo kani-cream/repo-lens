@@ -52,7 +52,14 @@ internal class GitBranchDiffProvider : BranchDiffProvider {
         val files = changes.mapNotNull { (path, info) ->
             repository.root.findFileByRelativePath(path)?.let { it to info }
         }
-        return BranchDiffResult.Success(baseDescription = base, files = files)
+
+        // git diff never lists files git does not track yet, but a reviewer of this
+        // branch would look at them - the same reasoning as Local Changes (OD-04).
+        val untracked = git(project, repository, GitCommand.LS_FILES, "--others", "--exclude-standard")
+            ?.mapNotNull { path -> repository.root.findFileByRelativePath(path.trim()) }
+            ?: emptyList()
+
+        return BranchDiffResult.Success(baseDescription = base, files = files, untracked = untracked)
     }
 
     private fun resolveBase(repository: GitRepository, configured: String): String? {

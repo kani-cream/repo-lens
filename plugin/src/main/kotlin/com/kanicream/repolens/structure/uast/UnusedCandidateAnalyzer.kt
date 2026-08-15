@@ -8,6 +8,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
+import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
@@ -64,16 +66,33 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
             )
         }
 
+        // Two phases with separate short read actions (issue #17): collecting the
+        // candidate declarations is cheap, while each reference search can be slow - one
+        // long read action per file would make a declaration-heavy file block write
+        // actions for the duration of every search in it.
         val findings = mutableListOf<Finding>()
         for (file in context.files()) {
             coroutineContext.ensureActive()
-            findings += readAction { analyzeFile(file.relativePath) }
+            val candidates = readAction { collectCandidates(file.relativePath) }
+            for (candidate in candidates) {
+                coroutineContext.ensureActive()
+                readAction { searchAndReport(candidate) }?.let(findings::add)
+            }
         }
         return findings
     }
 
+    /** Everything needed to search one declaration in its own read action later. */
+    private class Candidate(
+        val pointer: SmartPsiElementPointer<PsiModifierListOwner>,
+        val searchName: String,
+        val displayName: String,
+        val subject: String,
+        val location: SourceLocation,
+    )
+
     /** Called under a read action, in smart mode. */
-    private fun analyzeFile(relativePath: String): List<Finding> {
+    private fun collectCandidates(relativePath: String): List<Candidate> {
         val virtualFile = ProjectPaths.resolve(project, relativePath) ?: return emptyList()
         // Test code's public members are called by the framework, not by references.
         if (TestSourcesFilter.isTestSources(virtualFile, project)) return emptyList()
@@ -83,14 +102,14 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
         val document = FileDocumentManager.getInstance().getDocument(virtualFile)
             ?: return emptyList()
 
-        val findings = mutableListOf<Finding>()
+        val candidates = mutableListOf<Candidate>()
         uFile.accept(
             object : AbstractUastVisitor() {
                 override fun visitClass(node: UClass): Boolean {
                     // A companion object is reached through its containing class.
                     if (node.javaPsi.name == "Companion") return false
                     candidate(node.javaPsi, node.javaPsi.name, "type", relativePath, node.sourcePsi, document)
-                        ?.let(findings::add)
+                        ?.let(candidates::add)
                     return false
                 }
 
@@ -99,12 +118,12 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
                     val owner = node.getContainingUClass()?.javaPsi?.name
                     val display = if (owner == null) "${node.name}()" else "$owner.${node.name}()"
                     candidate(node.javaPsi, display, "function or method", relativePath, node.sourcePsi, document)
-                        ?.let(findings::add)
+                        ?.let(candidates::add)
                     return false
                 }
             },
         )
-        return findings
+        return candidates
     }
 
     /**
@@ -144,33 +163,43 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
         relativePath: String,
         sourcePsi: PsiElement?,
         document: Document,
-    ): Finding? {
+    ): Candidate? {
         if (name.isNullOrEmpty() || sourcePsi == null) return null
         if (!psi.hasModifierProperty(PsiModifier.PUBLIC)) return null
 
+        val range = sourcePsi.textRange ?: return null
+        if (range.startOffset > document.textLength) return null
+        val startLine = document.getLineNumber(range.startOffset) + 1
+        val endLine = document.getLineNumber(range.endOffset.coerceAtMost(document.textLength)) + 1
+
+        return Candidate(
+            pointer = SmartPointerManager.getInstance(project).createSmartPsiElementPointer(psi),
+            searchName = if (psi is PsiMethod) psi.name else name,
+            displayName = name,
+            subject = subject,
+            location = SourceLocation(relativePath, startLine, maxOf(startLine, endLine)),
+        )
+    }
+
+    /** Called under its own read action; returns a finding when nothing references the candidate. */
+    private fun searchAndReport(candidate: Candidate): Finding? {
+        val psi = candidate.pointer.element ?: return null // edited away since collection
         val scope = GlobalSearchScope.projectScope(project)
-        val searchName = if (psi is PsiMethod) psi.name else name
-        when (PsiSearchHelper.getInstance(project).isCheapEnoughToSearch(searchName, scope, null)) {
+        when (PsiSearchHelper.getInstance(project).isCheapEnoughToSearch(candidate.searchName, scope, null)) {
             SearchCostResult.TOO_MANY_OCCURRENCES -> return null // common name; searching would lie or crawl
             SearchCostResult.ZERO_OCCURRENCES -> {} // definitely no textual mention outside the declaration
             SearchCostResult.FEW_OCCURRENCES ->
                 if (ReferencesSearch.search(psi, scope).findFirst() != null) return null
         }
 
-        val range = sourcePsi.textRange ?: return null
-        if (range.startOffset > document.textLength) return null
-        val startLine = document.getLineNumber(range.startOffset) + 1
-        val endLine = document.getLineNumber(range.endOffset.coerceAtMost(document.textLength)) + 1
-        val location = SourceLocation(relativePath, startLine, maxOf(startLine, endLine))
-
         return Finding(
-            id = Finding.stableId(id, location),
+            id = Finding.stableId(id, candidate.location),
             analyzerId = id,
             severity = Severity.INFO,
             checkName = checkName,
-            message = "No project reference to this public $subject was found. $LIMITATION",
-            location = location,
-            symbol = SymbolInfo(name),
+            message = "No project reference to this public ${candidate.subject} was found. $LIMITATION",
+            location = candidate.location,
+            symbol = SymbolInfo(candidate.displayName),
             confidence = Confidence.LOW,
         )
     }

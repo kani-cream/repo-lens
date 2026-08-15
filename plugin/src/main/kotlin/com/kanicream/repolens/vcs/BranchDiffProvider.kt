@@ -11,6 +11,12 @@ sealed interface BranchDiffResult {
     data class Success(
         val baseDescription: String,
         val files: List<Pair<VirtualFile, FileChangeInfo>>,
+        /**
+         * Files git does not track yet. They never appear in `git diff`, but a reviewer
+         * of the branch would absolutely look at them; the caller counts their lines
+         * (the whole file is the addition).
+         */
+        val untracked: List<VirtualFile> = emptyList(),
     ) : BranchDiffResult
 
     /** Diff cannot be computed right now; [reason] is shown to the user as-is. */

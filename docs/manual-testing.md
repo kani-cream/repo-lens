@@ -160,6 +160,12 @@ feature branch 上のプロジェクトで行う（`repo-lens` 自体を開発�
    入れて Analyze → `Base branch 'nope' does not exist...` がステータスに出る
    （空欄に戻すと自動検出に復帰）
 5. 閾値: Large diff threshold（既定 300 changed lines）は Thresholds 群で変更可
+6. **Untracked** — `git add` していない新規ファイルを作って Analyze →
+   Branch Diff に `+N −0 (added)` で含まれる（大きければ Large Diff も発火）。
+   `git diff` には現れないファイルだが、レビュー対象として扱うのが仕様
+7. **履歴キャッシュ** — 同一 HEAD で 2 回 Analyze すると、ログに
+   `history cache hit` が出て `enrich=` が下がる（残りは TODO ファイルへの
+   blame 分）
 
 ## 7. Git history / Long-lived TODO の確認
 

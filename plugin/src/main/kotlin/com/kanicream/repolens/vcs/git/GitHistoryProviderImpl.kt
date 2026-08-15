@@ -1,5 +1,6 @@
 package com.kanicream.repolens.vcs.git
 
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.kanicream.repolens.enrich.FileHistory
 import com.kanicream.repolens.vcs.GitHistoryProvider
@@ -17,8 +18,37 @@ import git4idea.repo.GitRepositoryManager
  */
 internal class GitHistoryProviderImpl : GitHistoryProvider {
 
+    /**
+     * The window-bounded log only changes when HEAD moves, so one cached entry keyed by
+     * (root, HEAD, window) turns repeat analyses from a repository-wide log walk into a
+     * map lookup. Single entry on purpose: no growth, trivially correct.
+     */
+    private data class CacheKey(val rootPath: String, val head: String, val days: Int)
+
+    @Volatile
+    private var cache: Pair<CacheKey, Map<String, FileHistory>>? = null
+
     override fun repositoryHistory(project: Project, days: Int): Map<String, FileHistory>? {
         val repository = firstRepository(project) ?: return null
+        val head = repository.currentRevision
+        if (head == null) {
+            LOG.info("history cache bypass: currentRevision unavailable")
+            return queryHistory(project, repository, days)
+        }
+        val key = CacheKey(repository.root.path, head, days)
+        cache?.let { (cachedKey, value) ->
+            if (cachedKey == key) {
+                LOG.info("history cache hit (${value.size} paths)")
+                return value
+            }
+        }
+        val fresh = queryHistory(project, repository, days) ?: return null
+        LOG.info("history cache miss: queried ${fresh.size} paths")
+        cache = key to fresh
+        return fresh
+    }
+
+    private fun queryHistory(project: Project, repository: GitRepository, days: Int): Map<String, FileHistory>? {
         val output = git(
             project, repository, GitCommand.LOG,
             "--since=$days days ago", "--format=%x01%an%x02%ct", "--name-only", "--no-merges",
@@ -49,5 +79,9 @@ internal class GitHistoryProviderImpl : GitHistoryProvider {
         handler.setSilent(true)
         val result = Git.getInstance().runCommand(handler)
         return if (result.success()) result.output else null
+    }
+
+    companion object {
+        private val LOG = logger<GitHistoryProviderImpl>()
     }
 }
