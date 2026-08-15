@@ -144,7 +144,24 @@ Settings → Tools → Repo Lens:
 5. **永続化** — サンドボックスを閉じて再起動しても設定が残っている
    （プロジェクトの `.idea/repoLens.xml` に保存される）
 
-## 6. Ignore / Suppress の確認
+## 6. Branch Diff の確認
+
+feature branch 上のプロジェクトで行う（`repo-lens` 自体を開発中 branch で
+開くのが手軽。main と HEAD が同一だと差分ゼロで Total 0 になる）。
+
+1. Scope を **Branch Diff** → Analyze → base（自動検出なら origin/main 等）
+   との差分ファイルだけが対象になる。Local Changes と違い、**コミット済みの
+   branch 変更も含む**
+2. 差分が大きいファイルがあれば **Large Diff**（`RL-G001`）が
+   `Value = 追加+削除行数` で出る。message に `+added −deleted` と status
+   （added / modified / renamed）
+3. Large Diff の行を Copy for AI → `- Diff: +A −D (status)` 行が入る
+4. Settings → Branch Diff → Base branch に存在しない名前（例: `nope`）を
+   入れて Analyze → `Base branch 'nope' does not exist...` がステータスに出る
+   （空欄に戻すと自動検出に復帰）
+5. 閾値: Large diff threshold（既定 300 changed lines）は Thresholds 群で変更可
+
+## 7. Ignore / Suppress の確認
 
 1. **Ignore** — 一覧の行を右クリック → **Ignore Finding** → 行が消え、
    ステータスに `N hidden (N ignored)` が出る。ルール抑制分は
@@ -159,7 +176,7 @@ Settings → Tools → Repo Lens:
 5. **再解析安定性** — 再 Analyze しても ignored の Finding は ignored のまま
    （stable ID によるため。対象行が編集で移動した場合は新 ID になり再表示される）
 
-## 7. トラブルシューティング
+## 8. トラブルシューティング
 
 - サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log`
 - 解析の診断ログ: 同ログに `RepoLensAnalysisService - analysis scope=... RL-F001=12ms ...`

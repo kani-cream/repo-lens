@@ -1,0 +1,11 @@
+<idea-plugin>
+    <!--
+      Loaded only when the Git plugin is enabled. Without it the Branch Diff scope
+      reports itself unavailable with a reason; everything else keeps working
+      (design 4.6: unavailable capability is a normal state).
+    -->
+    <extensions defaultExtensionNs="com.kanicream.repolens">
+        <branchDiffProvider
+            implementation="com.kanicream.repolens.vcs.git.GitBranchDiffProvider"/>
+    </extensions>
+</idea-plugin>

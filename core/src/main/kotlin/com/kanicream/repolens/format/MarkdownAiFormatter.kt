@@ -1,6 +1,7 @@
 package com.kanicream.repolens.format
 
 import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
+import com.kanicream.repolens.analysis.tier0.LargeDiffAnalyzer
 import com.kanicream.repolens.model.Finding
 
 /** One finding plus its optional code excerpt, shared by all copy formats. */
@@ -67,6 +68,11 @@ object MarkdownAiFormatter {
         finding.measuredValue?.let { appendLine("- Value: ${MetricFormat.format(it)}") }
         finding.threshold?.let { appendLine("- Threshold: ${MetricFormat.format(it)}") }
         finding.confidence?.let { appendLine("- Confidence: ${it.displayName}") }
+        finding.metadata[LargeDiffAnalyzer.METADATA_ADDED]?.let { added ->
+            val deleted = finding.metadata[LargeDiffAnalyzer.METADATA_DELETED] ?: "0"
+            val status = finding.metadata[LargeDiffAnalyzer.METADATA_STATUS] ?: "changed"
+            appendLine("- Diff: +$added −$deleted ($status)")
+        }
         appendLine()
         appendLine("### Reason")
         appendLine()

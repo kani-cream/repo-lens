@@ -1,6 +1,7 @@
 package com.kanicream.repolens.analysis
 
 import com.kanicream.repolens.model.AnalysisRequest
+import com.kanicream.repolens.model.FileChangeInfo
 import com.kanicream.repolens.model.SettingsSnapshot
 import com.kanicream.repolens.structure.CodeStructure
 
@@ -44,4 +45,17 @@ interface AnalyzedFile {
      * A missing structure is a normal state, not an error: Tier 0 analysis still works.
      */
     suspend fun structure(): CodeStructure? = null
+
+    /**
+     * Diff metrics against the scope's base, or `null` when the scope is not
+     * diff-based (or the VCS could not supply them).
+     */
+    fun changeInfo(): FileChangeInfo? = null
+
+    /**
+     * Whether this file lives under a test source root. Test code has different
+     * audiences (frameworks call it, it imports everything, it reuses production
+     * package names), so several analyzers treat it differently.
+     */
+    suspend fun isTestSource(): Boolean = false
 }

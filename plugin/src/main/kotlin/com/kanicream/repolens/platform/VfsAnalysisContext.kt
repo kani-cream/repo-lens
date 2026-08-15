@@ -12,7 +12,11 @@ import com.intellij.openapi.vfs.VirtualFileVisitor
 import com.kanicream.repolens.analysis.AnalysisContext
 import com.kanicream.repolens.analysis.AnalyzedFile
 import com.kanicream.repolens.model.AnalysisRequest
+import com.kanicream.repolens.model.FileChangeInfo
 import com.kanicream.repolens.scope.PathExclusions
+import com.kanicream.repolens.vcs.BranchDiffProvider
+import com.kanicream.repolens.vcs.BranchDiffResult
+import com.kanicream.repolens.vcs.ScopeUnavailableException
 
 /**
  * Platform adapter that turns a [ResolvedScope] into analyzable files.
@@ -34,7 +38,32 @@ internal class VfsAnalysisContext(
     private var cachedFiles: List<AnalyzedFile>? = null
 
     override suspend fun files(): List<AnalyzedFile> =
-        cachedFiles ?: listFiles().also { cachedFiles = it }
+        cachedFiles ?: when (scope) {
+            is ResolvedScope.BranchDiff -> branchDiffFiles(scope)
+            else -> listFiles()
+        }.also { cachedFiles = it }
+
+    /**
+     * Runs git off the EDT (we are on a background dispatcher here) and only then maps
+     * paths under a read action. An unusable diff surfaces as a reasoned failure, not an
+     * empty result that reads as "no changes".
+     */
+    private suspend fun branchDiffFiles(scope: ResolvedScope.BranchDiff): List<AnalyzedFile> {
+        val provider = BranchDiffProvider.first()
+            ?: throw ScopeUnavailableException("Branch Diff needs the Git plugin, which is not available")
+        val success = when (val result = provider.resolve(project, scope.baseBranchSetting)) {
+            is BranchDiffResult.Unavailable -> throw ScopeUnavailableException(result.reason)
+            is BranchDiffResult.Success -> result
+        }
+        return readAction {
+            success.files.mapNotNull { (file, change) ->
+                if (!file.isValid || file.isDirectory || file.fileType.isBinary) return@mapNotNull null
+                val relativePath = ProjectPaths.relativePath(project, file)
+                if (exclusions.isExcluded(relativePath)) return@mapNotNull null
+                VfsAnalyzedFile(project, file, relativePath, change)
+            }
+        }
+    }
 
     private suspend fun listFiles(): List<AnalyzedFile> = readAction {
         val collector = FileCollector()
@@ -59,6 +88,8 @@ internal class VfsAnalysisContext(
             is ResolvedScope.DerivedFiles -> scope.files.forEach { file ->
                 if (file.isDirectory) collectRecursively(file, collector) else collector.add(file)
             }
+
+            is ResolvedScope.BranchDiff -> error("Branch Diff is resolved by branchDiffFiles")
         }
         collector.files
     }

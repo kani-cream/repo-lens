@@ -48,15 +48,16 @@ class RepoLensAnalysisService(
         stop()
         val publisher = project.messageBus.syncPublisher(RepoLensAnalysisListener.TOPIC)
 
-        when (val resolution = ScopeResolver.resolve(project, scopeType, selectedFiles)) {
+        val settingsSnapshot = RepoLensSettings.getInstance(project).snapshot()
+        when (
+            val resolution =
+                ScopeResolver.resolve(project, scopeType, selectedFiles, settingsSnapshot.baseBranch)
+        ) {
             is ScopeResolution.Unavailable -> publisher.analysisFailed(resolution.reason)
 
             is ScopeResolution.Resolved -> {
                 publisher.analysisStarted(scopeType)
-                val request = AnalysisRequest(
-                    scopeType = scopeType,
-                    settings = RepoLensSettings.getInstance(project).snapshot(),
-                )
+                val request = AnalysisRequest(scopeType = scopeType, settings = settingsSnapshot)
                 val context = VfsAnalysisContext(project, request, resolution.scope)
                 currentJob = coroutineScope.launch {
                     try {
@@ -68,6 +69,9 @@ class RepoLensAnalysisService(
                     } catch (e: CancellationException) {
                         onEdt { publish { it.analysisCancelled() } }
                         throw e
+                    } catch (e: com.kanicream.repolens.vcs.ScopeUnavailableException) {
+                        // A reasoned, user-fixable condition - not an error worth a stack trace.
+                        onEdt { publish { it.analysisFailed(e.message ?: "Scope unavailable") } }
                     } catch (e: Throwable) {
                         LOG.warn("Repo Lens analysis failed", e)
                         onEdt { publish { it.analysisFailed("Analysis failed: ${e.javaClass.simpleName}") } }

@@ -149,6 +149,26 @@ class AnalysisOrchestratorTest {
     }
 
     @Test
+    fun `a scope that fails to resolve aborts the run instead of failing every analyzer`() = runTest {
+        val brokenScope = object : AnalysisContext {
+            override val request = context().request
+            override suspend fun files() = throw IllegalStateException("base branch missing")
+        }
+        val orchestrator = AnalysisOrchestrator(
+            AnalyzerRegistry(listOf(stubAnalyzer("A-1") { emptyList() }, stubAnalyzer("A-2") { emptyList() })),
+        )
+
+        var thrown: Exception? = null
+        try {
+            orchestrator.analyze(brokenScope)
+        } catch (e: IllegalStateException) {
+            thrown = e
+        }
+
+        assertEquals("base branch missing", thrown?.message)
+    }
+
+    @Test
     fun `a skipped analyzer is reported with its reason not as a failure`() = runTest {
         val orchestrator = AnalysisOrchestrator(
             AnalyzerRegistry(

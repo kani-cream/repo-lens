@@ -2,8 +2,10 @@ package com.kanicream.repolens.platform
 
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.openapi.vfs.VirtualFile
 import com.kanicream.repolens.analysis.AnalyzedFile
+import com.kanicream.repolens.model.FileChangeInfo
 import com.kanicream.repolens.structure.CodeStructure
 import com.kanicream.repolens.structure.CodeStructureProvider
 import com.kanicream.repolens.text.TextLines
@@ -22,7 +24,13 @@ internal class VfsAnalyzedFile(
     private val project: Project,
     private val file: VirtualFile,
     override val relativePath: String,
+    private val change: FileChangeInfo? = null,
 ) : AnalyzedFile {
+
+    override fun changeInfo(): FileChangeInfo? = change
+
+    override suspend fun isTestSource(): Boolean =
+        readAction { TestSourcesFilter.isTestSources(file, project) }
 
     private var structureComputed = false
     private var cachedStructure: CodeStructure? = null

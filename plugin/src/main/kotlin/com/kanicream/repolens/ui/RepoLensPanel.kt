@@ -196,7 +196,20 @@ internal class RepoLensPanel(private val project: Project) :
 
     override fun analysisStarted(scopeType: AnalysisScopeType) {
         scopeCombo.selectedItem = scopeType
+        // Park focus on the findings table before the Analyze button disables itself:
+        // Swing moves focus off a disabling component to the next one in the traversal
+        // order, which happened to be the search field. The table is where the next
+        // interaction (arrow keys, Enter to navigate) belongs.
+        table.requestFocusInWindow()
         setRunning(true)
+        // Stale results under a failure message read as current results, and a stale
+        // selection keeps the copy buttons live; a starting run clears the stage.
+        allFindings = emptyList()
+        skippedAnalyzers = emptyList()
+        failedAnalyzerCount = 0
+        tableModel.setFindings(emptyList())
+        detailArea.text = ""
+        copyButtons.values.forEach { it.isEnabled = false }
         statusLabel.text = "Analyzing ${scopeType.displayName.lowercase()}…"
     }
 

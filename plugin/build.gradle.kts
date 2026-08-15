@@ -38,6 +38,8 @@ dependencies {
         // JS/TS PSI for the JavaScript structure provider; bundled in the unified
         // distribution and likewise optional at runtime.
         bundledPlugin("JavaScript")
+        // Git integration for Branch Diff and history metrics; bundled, optional at runtime.
+        bundledPlugin("Git4Idea")
         // Test scope only: Repo Lens references no Kotlin API, and the bundled Kotlin
         // plugin carries newer Kotlin metadata than this module compiles against, so it
         // must not reach the compile classpath. The tests need it loaded to prove that
@@ -70,7 +72,7 @@ tasks.test {
     // need: this plugin plus Java, which supplies UAST for the structure provider.
     systemProperty(
         "idea.load.plugins.id",
-        "com.kanicream.repolens,com.intellij.java,org.jetbrains.kotlin,org.jetbrains.plugins.go,JavaScript",
+        "com.kanicream.repolens,com.intellij.java,org.jetbrains.kotlin,org.jetbrains.plugins.go,JavaScript,Git4Idea",
     )
 }
 

@@ -78,6 +78,17 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
             row("Nesting depth threshold:") {
                 intTextField(range = 1..100).bindIntText(state::nestingDepthThreshold)
             }
+            row("Large diff threshold (changed lines):") {
+                intTextField(range = 1..1_000_000).bindIntText(state::largeDiffChangedLineThreshold)
+            }
+        }
+        group("Branch Diff") {
+            row("Base branch:") {
+                textField()
+                    .columns(24)
+                    .bindText(state::baseBranch)
+                    .comment("Blank auto-detects origin/main, origin/master, main, master.")
+            }
         }
         group("Exclusions") {
             row {

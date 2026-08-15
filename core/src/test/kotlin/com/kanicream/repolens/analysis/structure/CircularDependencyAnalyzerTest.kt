@@ -184,6 +184,29 @@ class CircularDependencyAnalyzerTest {
     }
 
     @Test
+    fun `test sources never contribute edges`() = runTest {
+        // Tests reuse production package names and import broadly; a "cycle" that only
+        // exists through them is coupling the production code does not have.
+        val context = InMemoryAnalysisContext(
+            listOf(
+                file("main/A.java", "app.a", "app.b.B" to 1),
+                file("main/B.java", "app.b"),
+                InMemoryFile(
+                    "test/BTest.java",
+                    structure = CodeStructure(
+                        declarations = emptyList(),
+                        packageName = "app.b",
+                        imports = listOf(PackageImport("app.a.A", 1)),
+                    ),
+                    isTestSource = true,
+                ),
+            ),
+        )
+
+        assertTrue(analyzer.analyze(context).isEmpty())
+    }
+
+    @Test
     fun `files without structure or package are skipped`() = runTest {
         val context = InMemoryAnalysisContext(
             listOf(

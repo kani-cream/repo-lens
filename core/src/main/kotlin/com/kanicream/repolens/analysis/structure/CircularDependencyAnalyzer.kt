@@ -58,6 +58,9 @@ class CircularDependencyAnalyzer : RepoLensAnalyzer {
 
         for (file in context.files()) {
             coroutineContext.ensureActive()
+            // Test sources import everything and reuse production package names, which
+            // fabricates coupling the production code does not have.
+            if (file.isTestSource()) continue
             val structure = file.structure() ?: continue
             val packageName = structure.packageName?.takeIf { it.isNotEmpty() } ?: continue
             graph.packages += packageName

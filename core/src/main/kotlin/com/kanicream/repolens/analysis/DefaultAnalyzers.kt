@@ -5,6 +5,7 @@ import com.kanicream.repolens.analysis.structure.DeepNestingAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
 import com.kanicream.repolens.analysis.structure.ParameterCountAnalyzer
+import com.kanicream.repolens.analysis.tier0.LargeDiffAnalyzer
 import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 
@@ -17,6 +18,7 @@ object DefaultAnalyzers {
     fun create(): List<RepoLensAnalyzer> = listOf(
         LargeFileAnalyzer(),
         TodoMarkerAnalyzer(),
+        LargeDiffAnalyzer(),
         LargeClassAnalyzer(),
         LargeMethodAnalyzer(),
         ParameterCountAnalyzer(),

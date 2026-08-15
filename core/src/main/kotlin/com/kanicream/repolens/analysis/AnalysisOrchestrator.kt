@@ -20,6 +20,11 @@ import kotlinx.coroutines.ensureActive
 class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
 
     suspend fun analyze(context: AnalysisContext): AnalysisResult {
+        // Resolve the scope once, up front. A scope that cannot be resolved (missing
+        // base branch, no repository) must abort the run with its reason, not surface
+        // as one identical failure per analyzer.
+        context.files()
+
         val findingsById = LinkedHashMap<String, Finding>()
         val failures = mutableListOf<AnalyzerFailure>()
         val skips = mutableListOf<AnalyzerSkip>()

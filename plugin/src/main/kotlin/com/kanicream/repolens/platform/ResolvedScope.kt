@@ -28,6 +28,12 @@ internal sealed interface ResolvedScope {
      * Exclusion rules apply, so a regenerated lock file does not become a finding.
      */
     data class DerivedFiles(val files: List<VirtualFile>) : ResolvedScope
+
+    /**
+     * Diff against [baseBranchSetting] (blank = auto-detect). Resolved lazily on the
+     * background thread, because computing it runs git commands.
+     */
+    data class BranchDiff(val baseBranchSetting: String) : ResolvedScope
 }
 
 /** Outcome of turning a scope choice into something analyzable. */

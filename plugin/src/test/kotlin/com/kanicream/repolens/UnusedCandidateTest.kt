@@ -144,6 +144,46 @@ class UnusedCandidateTest : BasePlatformTestCase() {
         assertContainsElements(symbols, "KotlinOrphan", "KotlinOrphan.neverCalled()")
     }
 
+    fun `test kotlin synthesized accessors enums and companions are not candidates`() {
+        myFixture.addFileToProject(
+            "orphan/Synthetics.kt",
+            """
+            package orphan
+
+            enum class Mode(val label: String) { FAST, SLOW }
+
+            data class Payload(val body: String)
+
+            class WithCompanion {
+                companion object {
+                    val SHARED: Int = 1
+                }
+
+                var counter: Int = 0
+
+                val computed: Int
+                    get() = counter + 1
+
+                fun realFunction() {
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val symbols = analyze().findings.map { it.symbol?.displayName }.toSet()
+
+        // Real declarations are candidates...
+        assertContainsElements(symbols, "WithCompanion", "WithCompanion.realFunction()", "Mode", "Payload")
+        // ...but nothing synthesized may leak through: property accessors, enum
+        // valueOf/values, data-class members, companion accessors, the Companion itself.
+        val leaked = symbols.filterNotNull().filter { name ->
+            ".get" in name || ".set" in name || "valueOf" in name || ".values" in name ||
+                ".component" in name || ".copy(" in name ||
+                name == "Companion" || name.endsWith(".Companion")
+        }
+        assertEmpty(leaked.toString(), leaked)
+    }
+
     fun `test dumb mode skips with a visible reason instead of failing`() {
         myFixture.addFileToProject("A.java", "public class A {}\n")
 

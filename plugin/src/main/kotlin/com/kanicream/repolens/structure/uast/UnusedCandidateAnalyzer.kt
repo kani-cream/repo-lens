@@ -5,6 +5,7 @@ import com.intellij.openapi.editor.Document
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.TestSourcesFilter
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
@@ -31,6 +32,7 @@ import org.jetbrains.uast.getContainingUClass
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.UMethod
 import org.jetbrains.uast.toUElement
+import org.jetbrains.uast.UElement
 import org.jetbrains.uast.visitor.AbstractUastVisitor
 
 /**
@@ -73,6 +75,8 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
     /** Called under a read action, in smart mode. */
     private fun analyzeFile(relativePath: String): List<Finding> {
         val virtualFile = ProjectPaths.resolve(project, relativePath) ?: return emptyList()
+        // Test code's public members are called by the framework, not by references.
+        if (TestSourcesFilter.isTestSources(virtualFile, project)) return emptyList()
         if (VfsText.load(virtualFile) == null) return emptyList()
         val uFile = PsiManager.getInstance(project).findFile(virtualFile)?.toUElement() as? UFile
             ?: return emptyList()
@@ -83,6 +87,8 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
         uFile.accept(
             object : AbstractUastVisitor() {
                 override fun visitClass(node: UClass): Boolean {
+                    // A companion object is reached through its containing class.
+                    if (node.javaPsi.name == "Companion") return false
                     candidate(node.javaPsi, node.javaPsi.name, "type", relativePath, node.sourcePsi, document)
                         ?.let(findings::add)
                     return false
@@ -110,6 +116,18 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
         val psi = method.javaPsi
         if (method.isConstructor) return true
         if (psi.name == "main") return true
+        // Accessors and other members a language synthesizes (Kotlin property getters,
+        // enum valueOf/values, data-class members) round-trip to something other than a
+        // method. References resolve to the property, never to the light accessor, so a
+        // search on the accessor is guaranteed to find nothing and would always flag it.
+        val sourceAsUElement: UElement? = method.sourcePsi?.toUElement()
+        if (sourceAsUElement !is UMethod) return true
+        // Properties with explicit accessors surface as UMethods whose source is the
+        // accessor, slipping past the round-trip check. References still resolve to the
+        // property, so searching the accessor is guaranteed empty. No compile dependency
+        // on the Kotlin plugin exists here, hence the class-name check.
+        val sourceClassName = method.sourcePsi?.javaClass?.name.orEmpty()
+        if ("KtProperty" in sourceClassName || "KtParameter" in sourceClassName) return true
         // Kotlin light methods carry synthesized @NotNull/@Nullable; those say nothing
         // about who calls the method and must not exempt every Kotlin function.
         val meaningfulAnnotations = psi.annotations.filterNot {

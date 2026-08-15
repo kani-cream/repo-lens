@@ -27,6 +27,8 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
         var largeMethodLineThreshold: Int = SettingsSnapshot.DEFAULT_LARGE_METHOD_LINE_THRESHOLD
         var parameterCountThreshold: Int = SettingsSnapshot.DEFAULT_PARAMETER_COUNT_THRESHOLD
         var nestingDepthThreshold: Int = SettingsSnapshot.DEFAULT_NESTING_DEPTH_THRESHOLD
+        var largeDiffChangedLineThreshold: Int = SettingsSnapshot.DEFAULT_LARGE_DIFF_CHANGED_LINE_THRESHOLD
+        var baseBranch: String = ""
         var todoMarkers: MutableList<String> = SettingsSnapshot.DEFAULT_TODO_MARKERS.toMutableList()
         var disabledAnalyzerIds: MutableList<String> = mutableListOf()
         var excludePatterns: MutableList<String> = PathExclusions.DEFAULT_PATTERNS.toMutableList()
@@ -50,6 +52,8 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
         largeMethodLineThreshold = current.largeMethodLineThreshold,
         parameterCountThreshold = current.parameterCountThreshold,
         nestingDepthThreshold = current.nestingDepthThreshold,
+        largeDiffChangedLineThreshold = current.largeDiffChangedLineThreshold,
+        baseBranch = current.baseBranch,
         todoMarkers = current.todoMarkers.toList(),
         disabledAnalyzerIds = current.disabledAnalyzerIds.toSet(),
         excludePatterns = current.excludePatterns.toList(),

@@ -7,6 +7,7 @@ enum class AnalysisScopeType(val displayName: String) {
     SELECTED_FILES("Selected Files"),
     MODULE("Module"),
     LOCAL_CHANGES("Local Changes"),
+    BRANCH_DIFF("Branch Diff"),
 }
 
 /** Immutable description of one analysis run. */

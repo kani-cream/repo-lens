@@ -4,6 +4,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.kanicream.repolens.model.AnalysisScopeType
+import com.kanicream.repolens.vcs.BranchDiffProvider
 import com.kanicream.repolens.vcs.VcsFacade
 
 /**
@@ -19,6 +20,7 @@ internal object ScopeResolver {
         project: Project,
         scopeType: AnalysisScopeType,
         selectedFiles: List<VirtualFile>,
+        baseBranchSetting: String = "",
     ): ScopeResolution = when (scopeType) {
         AnalysisScopeType.PROJECT -> ScopeResolution.Resolved(ResolvedScope.WholeProject)
 
@@ -38,6 +40,14 @@ internal object ScopeResolver {
             )
 
         AnalysisScopeType.LOCAL_CHANGES -> localChanges(project)
+
+        AnalysisScopeType.BRANCH_DIFF ->
+            if (BranchDiffProvider.first() == null) {
+                ScopeResolution.Unavailable("Branch Diff needs the Git plugin, which is not available")
+            } else {
+                // The actual git work happens on the background thread inside the run.
+                ScopeResolution.Resolved(ResolvedScope.BranchDiff(baseBranchSetting))
+            }
     }
 
     private fun localChanges(project: Project): ScopeResolution {

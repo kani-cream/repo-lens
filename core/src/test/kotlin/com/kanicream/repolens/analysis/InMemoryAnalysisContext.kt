@@ -2,6 +2,7 @@ package com.kanicream.repolens.analysis
 
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.AnalysisScopeType
+import com.kanicream.repolens.model.FileChangeInfo
 import com.kanicream.repolens.model.SettingsSnapshot
 import com.kanicream.repolens.structure.CodeStructure
 import com.kanicream.repolens.text.TextLines
@@ -14,10 +15,14 @@ class InMemoryFile(
     override val relativePath: String,
     private val text: String? = null,
     private val structure: CodeStructure? = null,
+    private val changeInfo: FileChangeInfo? = null,
+    private val isTestSource: Boolean = false,
 ) : AnalyzedFile {
     override suspend fun lineCount(): Int? = text?.let(TextLines::physicalLineCount)
     override suspend fun lines(): List<String>? = text?.let(TextLines::split)
     override suspend fun structure(): CodeStructure? = structure
+    override fun changeInfo(): FileChangeInfo? = changeInfo
+    override suspend fun isTestSource(): Boolean = isTestSource
 }
 
 class InMemoryAnalysisContext(

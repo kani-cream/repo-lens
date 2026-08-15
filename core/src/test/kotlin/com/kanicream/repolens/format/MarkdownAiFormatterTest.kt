@@ -71,6 +71,22 @@ class MarkdownAiFormatterTest {
     }
 
     @Test
+    fun `diff metrics are rendered when present`() {
+        val finding = largeFileFinding().copy(
+            metadata = mapOf(
+                "diff.added" to "250",
+                "diff.deleted" to "60",
+                "diff.status" to "modified",
+            ),
+        )
+        val markdown = MarkdownAiFormatter.format(
+            AiCopyRequest("p", "Branch Diff", listOf(CopyItem(finding, snippet = null))),
+        )
+
+        assertTrue(markdown.contains("- Diff: +250 −60 (modified)"))
+    }
+
+    @Test
     fun `confidence is rendered when present and omitted otherwise`() {
         val withConfidence = todoFinding().copy(confidence = Confidence.LOW)
         val markdown = MarkdownAiFormatter.format(
