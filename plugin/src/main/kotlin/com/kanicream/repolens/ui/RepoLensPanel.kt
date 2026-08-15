@@ -63,7 +63,7 @@ internal class RepoLensPanel(private val project: Project) :
     private val searchField = SearchTextField()
     private val severityCombo = ComboBox(SEVERITY_CHOICES.toTypedArray())
     private val checkCombo = ComboBox(arrayOf(ALL_CHECKS))
-    private val showIgnoredCheckBox = JBCheckBox("Show ignored")
+    private val showHiddenCheckBox = JBCheckBox("Show hidden")
     private val analyzeButton = JButton("Analyze")
     private val stopButton = JButton("Stop")
     private val copyButtons: Map<CopyStyle, JButton> =
@@ -117,7 +117,7 @@ internal class RepoLensPanel(private val project: Project) :
             add(severityCombo)
             add(JBLabel("Check:"))
             add(checkCombo)
-            add(showIgnoredCheckBox)
+            add(showHiddenCheckBox)
             add(statusLabel)
         }
         val toolbar = JPanel(GridLayout(2, 1)).apply {
@@ -149,7 +149,7 @@ internal class RepoLensPanel(private val project: Project) :
         })
         severityCombo.addActionListener { applyFilters() }
         checkCombo.addActionListener { applyFilters() }
-        showIgnoredCheckBox.addActionListener { applyFilters() }
+        showHiddenCheckBox.addActionListener { applyFilters() }
         table.componentPopupMenu = buildTablePopup()
 
         table.selectionModel.addListSelectionListener { event ->
@@ -239,7 +239,7 @@ internal class RepoLensPanel(private val project: Project) :
         if (rebuildingFilters) return
         val policy = suppressionPolicy()
         val (active, suppressed) = policy.partition(allFindings)
-        val base = if (showIgnoredCheckBox.isSelected) allFindings else active
+        val base = if (showHiddenCheckBox.isSelected) allFindings else active
         val filter = currentFilter()
         val visible = filter.apply(base)
         tableModel.setFindings(visible)

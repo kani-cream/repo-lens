@@ -140,60 +140,94 @@ class CircularDependencyAnalyzer : RepoLensAnalyzer {
 
     // --- finding construction ---
 
-    private fun toFinding(cycle: List<String>, graph: PackageGraph): Finding {
-        val path = cyclePath(cycle, graph)
+    private fun toFinding(component: List<String>, graph: PackageGraph): Finding {
+        // A strongly connected component and a simple cycle are not the same thing: not
+        // every member necessarily sits on one loop. The finding models the SCC (that is
+        // the review unit) and shows one *real* cycle as the representative, so the path
+        // and its evidence only ever contain edges that exist.
+        val path = representativeCycle(component.toSet(), graph)
         val pathText = path.joinToString(" → ")
 
-        // Anchor on the import that closes the loop from the first package in the path,
-        // so navigation lands on a line that is actually part of the cycle.
-        val anchor = graph.edge(path[0], path[1]) ?: error("cycle edge must exist")
+        // Anchor on the first edge of the representative cycle, so navigation lands on
+        // an import that is actually part of it.
+        val anchor = checkNotNull(graph.edge(path[0], path[1])) { "representative edge must exist" }
         val location = SourceLocation(anchor.filePath, anchor.line, anchor.line)
 
-        val evidence = path.zipWithNext().mapNotNull { (from, to) ->
-            graph.edge(from, to)?.let { "$from → $to (${it.filePath}:${it.line})" }
+        val evidence = path.zipWithNext().map { (from, to) ->
+            val edge = checkNotNull(graph.edge(from, to)) { "representative edge must exist" }
+            "$from → $to (${edge.filePath}:${edge.line})"
         }
 
         return Finding(
-            // Derived from the member packages, not from a location: the same cycle must
+            // Derived from the member packages, not from a location: the same group must
             // keep the same ID however the code moves, or ignoring it stops working.
-            id = "$id:${cycle.joinToString(",")}",
+            id = "$id:${component.joinToString(",")}",
             analyzerId = id,
             severity = Severity.WARNING,
             checkName = checkName,
-            message = "These ${cycle.size} packages depend on each other in a cycle: $pathText. " +
+            message = "These ${component.size} packages form one strongly connected dependency group: " +
+                "${component.joinToString(", ")}. Representative cycle: $pathText. " +
                 "Cycles couple the packages into one unit for change, testing, and reuse.",
             location = location,
-            measuredValue = cycle.size.toDouble(),
+            measuredValue = component.size.toDouble(),
             metadata = mapOf(
                 METADATA_CYCLE_PATH to pathText,
+                METADATA_MEMBERS to component.joinToString(", "),
                 METADATA_EVIDENCE to evidence.joinToString("\n"),
             ),
         )
     }
 
-    /** A concrete walk around the cycle, starting from the alphabetically first member. */
-    private fun cyclePath(cycle: List<String>, graph: PackageGraph): List<String> {
-        val members = cycle.toSet()
-        val path = mutableListOf(cycle.first())
-        val visited = mutableSetOf(cycle.first())
-        while (true) {
-            val current = path.last()
-            val next = graph.successors(current)
-                .filter { it in members }
-                .sorted()
-                .firstOrNull { it == path.first() || it !in visited }
-                ?: return path + path.first() // defensive; SCC guarantees a way onward
-            if (next == path.first()) return path + next
-            path += next
-            visited += next
+    /**
+     * One cycle that actually exists inside the component: the shortest walk (BFS over
+     * existing edges, members only) from the alphabetically first member back to itself.
+     * An SCC of size > 1 guarantees such a walk. Deterministic, so the path is stable
+     * across runs.
+     */
+    private fun representativeCycle(members: Set<String>, graph: PackageGraph): List<String> {
+        val start = members.min()
+        val parent = mutableMapOf<String, String>()
+        val queue = ArrayDeque<String>()
+
+        graph.successors(start).filter { it in members }.sorted().forEach { next ->
+            if (next == start) return listOf(start, start) // self-loop
+            if (next !in parent) {
+                parent[next] = start
+                queue.addLast(next)
+            }
         }
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            for (next in graph.successors(current).filter { it in members }.sorted()) {
+                if (next == start) {
+                    val path = mutableListOf(start)
+                    var walk = current
+                    val reversed = mutableListOf<String>()
+                    while (walk != start) {
+                        reversed += walk
+                        walk = parent.getValue(walk)
+                    }
+                    path += reversed.asReversed()
+                    path += start
+                    return path
+                }
+                if (next !in parent) {
+                    parent[next] = current
+                    queue.addLast(next)
+                }
+            }
+        }
+        error("strongly connected component must contain a cycle through $start")
     }
 
     companion object {
         const val ID: String = "RL-D001"
 
-        /** Metadata key: the cycle as `a → b → c → a`. */
+        /** Metadata key: the representative cycle as `a → b → c → a`. */
         const val METADATA_CYCLE_PATH: String = "cycle.path"
+
+        /** Metadata key: every package in the strongly connected group, comma-separated. */
+        const val METADATA_MEMBERS: String = "cycle.members"
 
         /** Metadata key: one `from → to (file:line)` line per edge of the cycle. */
         const val METADATA_EVIDENCE: String = "cycle.evidence"

@@ -56,6 +56,44 @@ class CircularDependencyAnalyzerTest {
     }
 
     @Test
+    fun `scc members not on one simple cycle never fabricate edges`() = runTest {
+        // A -> B, B -> C, C -> B, B -> D, D -> A : one SCC {A,B,C,D}, but no single
+        // simple cycle visits all four. The old greedy walk emitted A -> B -> C -> A,
+        // whose closing edge does not exist.
+        val context = InMemoryAnalysisContext(
+            listOf(
+                file("A.java", "app.a", "app.b.B" to 1),
+                file("B.java", "app.b", "app.c.C" to 1, "app.d.D" to 2),
+                file("C.java", "app.c", "app.b.B" to 1),
+                file("D.java", "app.d", "app.a.A" to 1),
+            ),
+        )
+
+        val findings = analyzer.analyze(context)
+
+        assertEquals(1, findings.size)
+        val finding = findings.single()
+        // The SCC is the finding unit: all four members, stable ID over all of them.
+        assertEquals(4.0, finding.measuredValue)
+        assertEquals("RL-D001:app.a,app.b,app.c,app.d", finding.id)
+        assertEquals(
+            "app.a, app.b, app.c, app.d",
+            finding.metadata[CircularDependencyAnalyzer.METADATA_MEMBERS],
+        )
+        // The representative is a real cycle: the shortest loop through app.a.
+        assertEquals(
+            "app.a → app.b → app.d → app.a",
+            finding.metadata[CircularDependencyAnalyzer.METADATA_CYCLE_PATH],
+        )
+        // Every path edge exists, so evidence covers each step exactly once.
+        val evidence = finding.metadata[CircularDependencyAnalyzer.METADATA_EVIDENCE].orEmpty().lines()
+        assertEquals(3, evidence.size)
+        assertTrue(evidence.any { it.startsWith("app.a → app.b") }, evidence.toString())
+        assertTrue(evidence.any { it.startsWith("app.b → app.d") }, evidence.toString())
+        assertTrue(evidence.any { it.startsWith("app.d → app.a") }, evidence.toString())
+    }
+
+    @Test
     fun `acyclic graphs produce nothing`() = runTest {
         val context = InMemoryAnalysisContext(
             listOf(
