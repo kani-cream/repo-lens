@@ -138,6 +138,78 @@ class UastStructureTest : BasePlatformTestCase() {
         assertEquals(1, functions.single().startLine)
     }
 
+    fun `test parameter count is extracted for java and kotlin`() {
+        val java = structureOf(
+            "src/Params.java",
+            """
+            public class Params {
+                void wide(int a, int b, int c, int d) {}
+            }
+            """.trimIndent(),
+        )
+        assertEquals(
+            4,
+            java!!.ofKind(DeclarationKind.FUNCTION).single().parameterCount,
+        )
+
+        val kotlin = structureOf("src/Params.kt", "fun narrow(a: Int, b: Int) {}\n")
+        assertEquals(2, kotlin!!.ofKind(DeclarationKind.FUNCTION).single().parameterCount)
+    }
+
+    fun `test nesting depth counts nested control flow`() {
+        val structure = structureOf(
+            "src/Nesting.java",
+            """
+            public class Nesting {
+                void deep(int[] items) {
+                    if (items != null) {
+                        for (int item : items) {
+                            if (item > 0) {
+                                try {
+                                    System.out.println(item);
+                                } catch (RuntimeException e) {
+                                }
+                            }
+                        }
+                    }
+                }
+
+                void flat() {
+                    int a = 1;
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val functions = structure!!.ofKind(DeclarationKind.FUNCTION)
+        assertEquals(4, functions.single { it.displayName == "Nesting.deep()" }.maxNestingDepth)
+        assertEquals(0, functions.single { it.displayName == "Nesting.flat()" }.maxNestingDepth)
+    }
+
+    fun `test kotlin when and lambda count toward nesting depth`() {
+        val structure = structureOf(
+            "src/KtNesting.kt",
+            """
+            class KtNesting {
+                fun deep(values: List<Int>) {
+                    when (values.size) {
+                        0 -> Unit
+                        else -> values.forEach { value ->
+                            if (value > 0) {
+                                println(value)
+                            }
+                        }
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val deep = structure!!.ofKind(DeclarationKind.FUNCTION).single { it.displayName == "KtNesting.deep()" }
+        // when(1) > lambda(2) > if(3)
+        assertEquals(3, deep.maxNestingDepth)
+    }
+
     fun `test files without a uast language have no structure`() {
         assertNull(structureOf("docs/readme.txt", "just text\n"))
     }

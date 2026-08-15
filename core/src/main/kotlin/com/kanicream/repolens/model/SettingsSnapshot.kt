@@ -23,6 +23,8 @@ data class SettingsSnapshot(
     val largeFileLineThreshold: Int = DEFAULT_LARGE_FILE_LINE_THRESHOLD,
     val largeClassLineThreshold: Int = DEFAULT_LARGE_CLASS_LINE_THRESHOLD,
     val largeMethodLineThreshold: Int = DEFAULT_LARGE_METHOD_LINE_THRESHOLD,
+    val parameterCountThreshold: Int = DEFAULT_PARAMETER_COUNT_THRESHOLD,
+    val nestingDepthThreshold: Int = DEFAULT_NESTING_DEPTH_THRESHOLD,
     val todoMarkers: List<String> = DEFAULT_TODO_MARKERS,
     val disabledAnalyzerIds: Set<String> = emptySet(),
     /** Glob patterns for paths kept out of analysis; see [PathExclusions]. */
@@ -33,6 +35,8 @@ data class SettingsSnapshot(
         const val DEFAULT_LARGE_FILE_LINE_THRESHOLD: Int = 800
         const val DEFAULT_LARGE_CLASS_LINE_THRESHOLD: Int = 500
         const val DEFAULT_LARGE_METHOD_LINE_THRESHOLD: Int = 80
+        const val DEFAULT_PARAMETER_COUNT_THRESHOLD: Int = 7
+        const val DEFAULT_NESTING_DEPTH_THRESHOLD: Int = 5
         val DEFAULT_TODO_MARKERS: List<String> = listOf("TODO", "FIXME")
     }
 }

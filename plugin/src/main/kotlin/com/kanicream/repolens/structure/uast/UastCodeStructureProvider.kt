@@ -63,6 +63,9 @@ internal class UastCodeStructureProvider : CodeStructureProvider {
                         kind = DeclarationKind.FUNCTION,
                         bodyRange = node.uastBody?.sourcePsi?.textRange ?: node.sourcePsi?.textRange,
                         document = document,
+                    )?.copy(
+                        parameterCount = node.uastParameters.size,
+                        maxNestingDepth = UastNestingDepth.of(node.uastBody),
                     ) ?: return false
                     return false
                 }

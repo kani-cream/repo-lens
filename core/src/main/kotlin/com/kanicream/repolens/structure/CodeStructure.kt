@@ -29,11 +29,17 @@ data class CodeDeclaration(
     val startLine: Int,
     val endLine: Int,
     val bodyLineCount: Int,
+    /** Declared parameters; `null` when the provider does not compute it or [kind] is not a function. */
+    val parameterCount: Int? = null,
+    /** Deepest nesting of branching/looping constructs in the body; `null` when not computed. */
+    val maxNestingDepth: Int? = null,
 ) {
     init {
         require(startLine >= 1) { "startLine must be 1-based, got $startLine" }
         require(endLine >= startLine) { "endLine ($endLine) must not precede startLine ($startLine)" }
         require(bodyLineCount >= 0) { "bodyLineCount must not be negative, got $bodyLineCount" }
+        require(parameterCount == null || parameterCount >= 0) { "parameterCount must not be negative" }
+        require(maxNestingDepth == null || maxNestingDepth >= 0) { "maxNestingDepth must not be negative" }
     }
 }
 

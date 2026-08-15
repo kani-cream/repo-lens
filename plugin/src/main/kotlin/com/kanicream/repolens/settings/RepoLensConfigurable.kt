@@ -26,6 +26,12 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
             row("Large method threshold (body lines):") {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeMethodLineThreshold)
             }
+            row("Parameter count threshold:") {
+                intTextField(range = 1..1_000).bindIntText(state::parameterCountThreshold)
+            }
+            row("Nesting depth threshold:") {
+                intTextField(range = 1..100).bindIntText(state::nestingDepthThreshold)
+            }
             row("TODO markers:") {
                 textField()
                     .columns(30)
