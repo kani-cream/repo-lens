@@ -9,12 +9,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
-import com.kanicream.repolens.analysis.structure.DeepNestingAnalyzer
-import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
-import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
-import com.kanicream.repolens.analysis.structure.ParameterCountAnalyzer
-import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
-import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
+import com.kanicream.repolens.analysis.DefaultAnalyzers
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.AnalysisScopeType
 import com.kanicream.repolens.platform.ScopeResolution
@@ -37,18 +32,7 @@ class RepoLensAnalysisService(
     private val coroutineScope: CoroutineScope,
 ) {
 
-    private val orchestrator = AnalysisOrchestrator(
-        AnalyzerRegistry(
-            listOf(
-                LargeFileAnalyzer(),
-                TodoMarkerAnalyzer(),
-                LargeClassAnalyzer(),
-                LargeMethodAnalyzer(),
-                ParameterCountAnalyzer(),
-                DeepNestingAnalyzer(),
-            ),
-        ),
-    )
+    private val orchestrator = AnalysisOrchestrator(AnalyzerRegistry(DefaultAnalyzers.create()))
 
     @Volatile
     private var currentJob: Job? = null

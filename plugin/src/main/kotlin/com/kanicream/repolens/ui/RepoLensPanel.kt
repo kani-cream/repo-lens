@@ -14,7 +14,8 @@ import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
-import com.kanicream.repolens.clipboard.CopyForAiService
+import com.kanicream.repolens.clipboard.CopyStyle
+import com.kanicream.repolens.clipboard.FindingCopyService
 import com.kanicream.repolens.filter.FindingFilter
 import com.kanicream.repolens.format.MetricFormat
 import com.kanicream.repolens.model.AnalysisResult
@@ -57,7 +58,8 @@ internal class RepoLensPanel(private val project: Project) :
     private val checkCombo = ComboBox(arrayOf(ALL_CHECKS))
     private val analyzeButton = JButton("Analyze")
     private val stopButton = JButton("Stop")
-    private val copyForAiButton = JButton("Copy for AI")
+    private val copyButtons: Map<CopyStyle, JButton> =
+        CopyStyle.entries.associateWith { JButton(it.actionName) }
 
     /** Selection captured by the Project View action, re-used when Analyze is pressed again. */
     private var selectedFiles: List<VirtualFile> = emptyList()
@@ -88,7 +90,7 @@ internal class RepoLensPanel(private val project: Project) :
         detailArea.margin = JBUI.insets(6)
 
         stopButton.isEnabled = false
-        copyForAiButton.isEnabled = false
+        copyButtons.values.forEach { it.isEnabled = false }
 
         searchField.textEditor.emptyText.setText("Search findings")
         severityCombo.renderer = textListCellRenderer { it.label }
@@ -99,7 +101,7 @@ internal class RepoLensPanel(private val project: Project) :
             add(scopeCombo)
             add(analyzeButton)
             add(stopButton)
-            add(copyForAiButton)
+            copyButtons.values.forEach(::add)
         }
         val filterRow = row().apply {
             add(searchField)
@@ -129,7 +131,9 @@ internal class RepoLensPanel(private val project: Project) :
     private fun wireActions() {
         analyzeButton.addActionListener { startAnalysis() }
         stopButton.addActionListener { RepoLensAnalysisService.getInstance(project).stop() }
-        copyForAiButton.addActionListener { copySelectionForAi() }
+        copyButtons.forEach { (style, button) ->
+            button.addActionListener { copySelection(style) }
+        }
 
         searchField.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) = applyFilters()
@@ -246,7 +250,7 @@ internal class RepoLensPanel(private val project: Project) :
 
     private fun onSelectionChanged() {
         val selected = selectedFindings()
-        copyForAiButton.isEnabled = selected.isNotEmpty()
+        copyButtons.values.forEach { it.isEnabled = selected.isNotEmpty() }
         detailArea.text = when (selected.size) {
             0 -> ""
             1 -> detailText(selected.single())
@@ -262,11 +266,11 @@ internal class RepoLensPanel(private val project: Project) :
         }
     }
 
-    private fun copySelectionForAi() {
+    private fun copySelection(style: CopyStyle) {
         val selected = selectedFindings()
         if (selected.isEmpty()) return
-        CopyForAiService.getInstance(project).copyForAi(selected, selectedScope().displayName) {
-            statusLabel.text = "Copied ${selected.size} finding(s) as Markdown"
+        FindingCopyService.getInstance(project).copy(selected, style, selectedScope().displayName) {
+            statusLabel.text = "Copied ${selected.size} finding(s) (${style.actionName})"
         }
     }
 

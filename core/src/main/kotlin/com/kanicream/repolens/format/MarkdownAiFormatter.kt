@@ -2,8 +2,8 @@ package com.kanicream.repolens.format
 
 import com.kanicream.repolens.model.Finding
 
-/** One finding plus its optional code excerpt, ready for export. */
-data class AiCopyItem(
+/** One finding plus its optional code excerpt, shared by all copy formats. */
+data class CopyItem(
     val finding: Finding,
     val snippet: CodeSnippet?,
 )
@@ -12,7 +12,7 @@ data class AiCopyItem(
 data class AiCopyRequest(
     val projectName: String,
     val scopeName: String,
-    val items: List<AiCopyItem>,
+    val items: List<CopyItem>,
 )
 
 /**
@@ -36,7 +36,7 @@ object MarkdownAiFormatter {
         return body + "\n" + REVIEW_PROMPT + "\n"
     }
 
-    private fun formatSingle(item: AiCopyItem): String = buildString {
+    private fun formatSingle(item: CopyItem): String = buildString {
         appendLine("## Repo Lens Finding")
         appendLine()
         appendFindingBody(item)
@@ -56,7 +56,7 @@ object MarkdownAiFormatter {
         }
     }
 
-    private fun StringBuilder.appendFindingBody(item: AiCopyItem) {
+    private fun StringBuilder.appendFindingBody(item: CopyItem) {
         val finding = item.finding
         appendLine("- Issue: ${finding.checkName}")
         appendLine("- Severity: ${finding.severity.displayName}")

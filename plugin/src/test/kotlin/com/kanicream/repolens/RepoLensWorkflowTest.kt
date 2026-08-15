@@ -9,7 +9,7 @@ import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
 import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
-import com.kanicream.repolens.format.AiCopyItem
+import com.kanicream.repolens.format.CopyItem
 import com.kanicream.repolens.format.AiCopyRequest
 import com.kanicream.repolens.format.CodeSnippetBuilder
 import com.kanicream.repolens.format.MarkdownAiFormatter
@@ -222,6 +222,17 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         assertEmpty(result.findings.filter { it.analyzerId == LargeMethodAnalyzer.ID })
     }
 
+    fun `test disabled analyzers are skipped end to end`() {
+        myFixture.addFileToProject("src/App.kt", "// TODO mine\n")
+
+        val result = analyze(
+            ResolvedScope.WholeProject,
+            SettingsSnapshot(disabledAnalyzerIds = setOf(TodoMarkerAnalyzer.ID)),
+        )
+
+        assertEmpty(result.findings)
+    }
+
     fun `test navigation opens the finding file in an editor`() {
         myFixture.addFileToProject("src/Todo.kt", "// line 1\n// TODO navigate here\n")
 
@@ -249,7 +260,7 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
             CopySettings(contextLines = 1, maxCodeLines = 10),
         )
         val markdown = MarkdownAiFormatter.format(
-            AiCopyRequest(project.name, "Project", listOf(AiCopyItem(todo, snippet))),
+            AiCopyRequest(project.name, "Project", listOf(CopyItem(todo, snippet))),
         )
 
         assertTrue(markdown.startsWith("## Repo Lens Finding"))

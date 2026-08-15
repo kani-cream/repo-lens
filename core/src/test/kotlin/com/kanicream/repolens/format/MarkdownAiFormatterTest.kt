@@ -41,7 +41,7 @@ class MarkdownAiFormatterTest {
     fun `single finding renders required fields and trailing prompt`() {
         val snippet = CodeSnippet(startLine = 1, lines = listOf("class PaymentService {", "}"), omittedLineCount = 0)
         val markdown = MarkdownAiFormatter.format(
-            AiCopyRequest("payment-api", "Project", listOf(AiCopyItem(largeFileFinding(), snippet))),
+            AiCopyRequest("payment-api", "Project", listOf(CopyItem(largeFileFinding(), snippet))),
         )
 
         assertTrue(markdown.startsWith("## Repo Lens Finding"))
@@ -62,7 +62,7 @@ class MarkdownAiFormatterTest {
     @Test
     fun `symbol line is omitted when finding has no symbol`() {
         val markdown = MarkdownAiFormatter.format(
-            AiCopyRequest("p", "Project", listOf(AiCopyItem(largeFileFinding(), snippet = null))),
+            AiCopyRequest("p", "Project", listOf(CopyItem(largeFileFinding(), snippet = null))),
         )
 
         assertFalse(markdown.contains("- Symbol:"))
@@ -73,7 +73,7 @@ class MarkdownAiFormatterTest {
     fun `symbol is rendered when present`() {
         val finding = todoFinding().copy(symbol = SymbolInfo("App.main()"))
         val markdown = MarkdownAiFormatter.format(
-            AiCopyRequest("p", "Project", listOf(AiCopyItem(finding, snippet = null))),
+            AiCopyRequest("p", "Project", listOf(CopyItem(finding, snippet = null))),
         )
 
         assertTrue(markdown.contains("- Symbol: `App.main()`"))
@@ -87,8 +87,8 @@ class MarkdownAiFormatterTest {
                 projectName = "payment-api",
                 scopeName = "Project",
                 items = listOf(
-                    AiCopyItem(largeFileFinding(), snippet = null),
-                    AiCopyItem(todoFinding(), snippet = null),
+                    CopyItem(largeFileFinding(), snippet = null),
+                    CopyItem(todoFinding(), snippet = null),
                 ),
             ),
         )
@@ -106,7 +106,7 @@ class MarkdownAiFormatterTest {
     fun `truncated snippet renders omitted line marker inside the fence`() {
         val snippet = CodeSnippet(startLine = 1, lines = listOf("a", "b"), omittedLineCount = 84)
         val markdown = MarkdownAiFormatter.format(
-            AiCopyRequest("p", "Project", listOf(AiCopyItem(largeFileFinding(), snippet))),
+            AiCopyRequest("p", "Project", listOf(CopyItem(largeFileFinding(), snippet))),
         )
 
         assertTrue(markdown.contains("... omitted 84 lines ..."))
@@ -123,7 +123,7 @@ class MarkdownAiFormatterTest {
             location = SourceLocation("docs/README.md", 1, 3),
         )
         val markdown = MarkdownAiFormatter.format(
-            AiCopyRequest("p", "Project", listOf(AiCopyItem(finding, snippet))),
+            AiCopyRequest("p", "Project", listOf(CopyItem(finding, snippet))),
         )
 
         assertTrue(markdown.contains("````markdown"))

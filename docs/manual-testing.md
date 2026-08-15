@@ -60,12 +60,13 @@ Symbol 列は構造系 Check（Large Class / Method / Parameters / Nesting）に
 2. **Double click / Enter** — 対象ファイルの宣言行（TODO は該当行）へジャンプ
 3. **フィルタ** — Search に `nesting`、Severity を `Warning`、Check を
    `Deep Nesting` にすると絞り込まれ、ステータスが `Showing N of M` になる
-4. **Copy for AI** — 複数行を Cmd+クリックで選択 → Copy for AI →
-   エディタ等へ貼り付け。以下を確認:
-   - `# Repo Lens Review Context` ヘッダと Findings 件数
-   - 各 Finding に File / Symbol / Location / Value / Threshold / Reason
-   - コード断片がフェンス付きで含まれ、上限超過時は `... omitted N lines ...`
-   - 末尾に review 依頼文
+4. **Copy（3種）** — 複数行を Cmd+クリックで選択して各ボタンを押し、貼り付けて確認:
+   - **Copy** — 1 Finding = 1 行のパイプ区切りテキスト。コード断片なし
+   - **Copy with Code** — 上記 + 行番号付きコード断片。上限超過時は
+     `... omitted N lines ...`
+   - **Copy for AI** — Markdown。`# Repo Lens Review Context` ヘッダ、
+     File / Symbol / Location / Value / Threshold / Reason、フェンス付き断片、
+     末尾に review 依頼文
 
 ## 4. スコープの確認
 
@@ -86,11 +87,13 @@ Local Changes の対象は **Git の前回コミットとの差分**（IntelliJ 
 
 Settings → Tools → Repo Lens:
 
-1. **閾値** — Large method threshold を 80 → 3 に変更して再 Analyze →
+1. **Checks の有効/無効** — `TODO / FIXME (RL-T001)` のチェックを外して
+   再 Analyze → TODO の Findings が消える。チェックを戻すと復活する
+2. **閾値** — Large method threshold を 80 → 3 に変更して再 Analyze →
    サンプル中の小さいメソッドも検出される。戻すと消える
-2. **Exclusions** — `**/samples/**` を 1 行追加して再 Analyze →
+3. **Exclusions** — `**/samples/**` を 1 行追加して再 Analyze →
    samples の Findings が消える（明示選択した場合を除く）。行を削除して戻す
-3. **永続化** — サンドボックスを閉じて再起動しても設定が残っている
+4. **永続化** — サンドボックスを閉じて再起動しても設定が残っている
    （プロジェクトの `.idea/repoLens.xml` に保存される）
 
 ## 6. トラブルシューティング

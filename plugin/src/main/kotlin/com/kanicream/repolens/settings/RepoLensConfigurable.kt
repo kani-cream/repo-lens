@@ -5,18 +5,46 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindIntText
+import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
+import com.kanicream.repolens.analysis.DefaultAnalyzers
 
-/** Minimal v0.1 settings UI; more categories arrive with the remaining analyzers. */
+/** Project settings UI: per-check toggles, thresholds, exclusions, and copy limits. */
 class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
 
     private val state: RepoLensSettings.State = RepoLensSettings.getInstance(project).getState()
 
     override fun createPanel(): DialogPanel = panel {
-        group("Analyzers") {
+        group("Checks") {
+            DefaultAnalyzers.create().forEach { analyzer ->
+                row {
+                    checkBox("${analyzer.checkName} (${analyzer.id})")
+                        .bindSelected(
+                            getter = { analyzer.id !in state.disabledAnalyzerIds },
+                            setter = { enabled ->
+                                if (enabled) {
+                                    state.disabledAnalyzerIds.remove(analyzer.id)
+                                } else if (analyzer.id !in state.disabledAnalyzerIds) {
+                                    state.disabledAnalyzerIds.add(analyzer.id)
+                                }
+                            },
+                        )
+                }
+            }
+            row("TODO markers:") {
+                textField()
+                    .columns(30)
+                    .bindText(
+                        getter = { state.todoMarkers.joinToString(", ") },
+                        setter = { text -> state.todoMarkers = parseMarkers(text) },
+                    )
+                    .comment("Comma separated. Markers are matched as whole words, case-insensitively.")
+            }
+        }
+        group("Thresholds") {
             row("Large file threshold (lines):") {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeFileLineThreshold)
             }
@@ -31,15 +59,6 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
             }
             row("Nesting depth threshold:") {
                 intTextField(range = 1..100).bindIntText(state::nestingDepthThreshold)
-            }
-            row("TODO markers:") {
-                textField()
-                    .columns(30)
-                    .bindText(
-                        getter = { state.todoMarkers.joinToString(", ") },
-                        setter = { text -> state.todoMarkers = parseMarkers(text) },
-                    )
-                    .comment("Comma separated. Markers are matched as whole words, case-insensitively.")
             }
         }
         group("Exclusions") {
@@ -58,7 +77,7 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
                     )
             }.resizableRow()
         }
-        group("Copy for AI") {
+        group("Copy") {
             row("Context lines:") {
                 intTextField(range = 0..100).bindIntText(state::copyContextLines)
             }
