@@ -95,7 +95,13 @@ class RepoLensAnalysisService(
                         }
                     } catch (e: Throwable) {
                         LOG.warn("Repo Lens analysis failed", e)
-                        onEdt { publish { it.analysisFailed("Analysis failed: ${e.javaClass.simpleName}") } }
+                        onEdt {
+                            publish {
+                                it.analysisFailed(
+                                    RepoLensBundle.message("error.analysis.failed", e.javaClass.simpleName),
+                                )
+                            }
+                        }
                     }
                 }
             }
