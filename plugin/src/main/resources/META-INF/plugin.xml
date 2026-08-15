@@ -24,6 +24,8 @@
     <depends optional="true" config-file="repo-lens-uast.xml">com.intellij.modules.java</depends>
     <!-- Go structure analysis; optional for the same reason. -->
     <depends optional="true" config-file="repo-lens-go.xml">org.jetbrains.plugins.go</depends>
+    <!-- JavaScript / TypeScript structure analysis; optional for the same reason. -->
+    <depends optional="true" config-file="repo-lens-javascript.xml">JavaScript</depends>
 
     <extensionPoints>
         <extensionPoint name="codeStructureProvider" interface="com.kanicream.repolens.structure.CodeStructureProvider"

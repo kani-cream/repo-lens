@@ -1,0 +1,11 @@
+<idea-plugin>
+    <!--
+      Loaded only when the JavaScript plugin is available. One descriptor covers the
+      whole family (JS / TS / JSX / TSX). In IDEs without JavaScript the structure
+      checks fall back to Tier 0 - Provider unavailable is a normal state (design 4.6).
+    -->
+    <extensions defaultExtensionNs="com.kanicream.repolens">
+        <codeStructureProvider
+            implementation="com.kanicream.repolens.structure.jsts.JsTsCodeStructureProvider"/>
+    </extensions>
+</idea-plugin>

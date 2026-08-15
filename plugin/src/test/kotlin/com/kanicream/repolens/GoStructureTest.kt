@@ -2,6 +2,7 @@ package com.kanicream.repolens
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
@@ -13,7 +14,6 @@ import com.kanicream.repolens.model.AnalysisScopeType
 import com.kanicream.repolens.model.SettingsSnapshot
 import com.kanicream.repolens.platform.ResolvedScope
 import com.kanicream.repolens.platform.VfsAnalysisContext
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import com.kanicream.repolens.structure.CodeStructure
 import com.kanicream.repolens.structure.CodeStructureProvider
@@ -133,11 +133,12 @@ class GoStructureTest : BasePlatformTestCase() {
             SettingsSnapshot(parameterCountThreshold = 2, nestingDepthThreshold = 1),
         )
         val orchestrator = AnalysisOrchestrator(AnalyzerRegistry(DefaultAnalyzers.create()))
-        val result = ApplicationManager.getApplication().executeOnPooledThread<com.kanicream.repolens.model.AnalysisResult> {
+        val future = ApplicationManager.getApplication().executeOnPooledThread<com.kanicream.repolens.model.AnalysisResult> {
             runBlocking {
                 orchestrator.analyze(VfsAnalysisContext(project, request, ResolvedScope.WholeProject))
             }
-        }.get(60, TimeUnit.SECONDS)
+        }
+        val result = PlatformTestUtil.waitForFuture(future, 60_000)
 
         assertEmpty(result.failures)
         val params = result.findings.single { it.analyzerId == ParameterCountAnalyzer.ID }

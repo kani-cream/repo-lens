@@ -2,6 +2,7 @@ package com.kanicream.repolens
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
@@ -26,7 +27,6 @@ import com.kanicream.repolens.platform.ScopeResolution
 import com.kanicream.repolens.platform.ScopeResolver
 import com.kanicream.repolens.platform.VfsAnalysisContext
 import com.kanicream.repolens.text.TextLines
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -58,7 +58,10 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
                 orchestrator.analyze(VfsAnalysisContext(project, request, scope))
             }
         }
-        return future.get(60, TimeUnit.SECONDS)
+        // Pumps the EDT while waiting: plugins react to VFS events (e.g. the JavaScript
+        // plugin scanning node_modules) with activities that need the EDT, and blocking
+        // it with a plain Future.get deadlocks the analysis read actions against them.
+        return PlatformTestUtil.waitForFuture(future, 60_000)
     }
 
     private fun analyzeProject(settings: SettingsSnapshot): AnalysisResult =

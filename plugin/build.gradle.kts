@@ -35,6 +35,9 @@ dependencies {
         // Go PSI for the Go structure provider. Marketplace plugin (not bundled);
         // at runtime it stays an optional dependency like the UAST provider.
         plugin("org.jetbrains.plugins.go", "261.26222.22")
+        // JS/TS PSI for the JavaScript structure provider; bundled in the unified
+        // distribution and likewise optional at runtime.
+        bundledPlugin("JavaScript")
         // Test scope only: Repo Lens references no Kotlin API, and the bundled Kotlin
         // plugin carries newer Kotlin metadata than this module compiles against, so it
         // must not reach the compile classpath. The tests need it loaded to prove that
@@ -67,7 +70,7 @@ tasks.test {
     // need: this plugin plus Java, which supplies UAST for the structure provider.
     systemProperty(
         "idea.load.plugins.id",
-        "com.kanicream.repolens,com.intellij.java,org.jetbrains.kotlin,org.jetbrains.plugins.go",
+        "com.kanicream.repolens,com.intellij.java,org.jetbrains.kotlin,org.jetbrains.plugins.go,JavaScript",
     )
 }
 

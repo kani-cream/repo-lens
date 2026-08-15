@@ -41,7 +41,7 @@ Project スコープでも検出はされるが、`docs/` の設計書自体が�
 | Check | File | Symbol | Value / Threshold |
 |---|---|---|---|
 | Large File | `samples/large_file_sample.txt` | *(空欄)* | 851 / 800 |
-| Large Class | `samples/java/LargeClassSample.java` | `LargeClassSample` | 626 / 500 |
+| Large Class | `samples/java/LargeClassSample.java` | `LargeClassSample` | 627 / 500 |
 | Large Method | `samples/java/LargeMethodSample.java` | `LargeMethodSample.oversized()` | ≈92 / 80 |
 | Too Many Parameters | `samples/java/WideParametersSample.java` | `WideParametersSample.configure()` | 9 / 7 |
 | Too Many Parameters | `samples/kotlin/KotlinSamples.kt` | `KotlinSamples.configure()` | 9 / 7 |
@@ -61,6 +61,16 @@ Project スコープでも検出はされるが、`docs/` の設計書自体が�
 Go プラグインが無い場合は上記 3 行のうち TODO の 1 件だけが出る（構造解析は
 黙ってスキップされる）。これ自体が optional dependency の確認になる。
 `Narrow()`（2 パラメータ）は Go プラグインの有無に関わらず出ない。
+
+**JavaScript プラグインがある場合**（Ultimate では同梱・既定で有効）:
+
+| Check | File | Symbol | Value / Threshold |
+|---|---|---|---|
+| Too Many Parameters | `samples/ts/ts_samples.ts` | `configure()` | 9 / 7 |
+| Deep Nesting | `samples/ts/ts_samples.ts` | `deep()` | 6 / 5 |
+| TODO / FIXME | `samples/ts/ts_samples.ts` | *(空欄)* | *(空欄)* ×1 |
+
+`narrow()`（2 パラメータ）は出ない。
 
 出てはいけないもの（境界値の確認）:
 
