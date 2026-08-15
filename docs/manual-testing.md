@@ -41,8 +41,8 @@ Project スコープでも検出はされるが、`docs/` の設計書自体が�
 | Check | File | Symbol | Value / Threshold |
 |---|---|---|---|
 | Large File | `samples/large_file_sample.txt` | *(空欄)* | 851 / 800 |
-| Large Class | `samples/java/LargeClassSample.java` | `LargeClassSample` | 627 / 500 |
-| Large Method | `samples/java/LargeMethodSample.java` | `LargeMethodSample.oversized()` | ≈92 / 80 |
+| Large Type | `samples/java/LargeClassSample.java` | `LargeClassSample` | 627 / 500 |
+| Large Function / Method | `samples/java/LargeMethodSample.java` | `LargeMethodSample.oversized()` | ≈92 / 80 |
 | Too Many Parameters | `samples/java/WideParametersSample.java` | `WideParametersSample.configure()` | 9 / 7 |
 | Too Many Parameters | `samples/kotlin/KotlinSamples.kt` | `KotlinSamples.configure()` | 9 / 7 |
 | Deep Nesting | `samples/java/DeepNestingSample.java` | `DeepNestingSample.deep()` | 6 / 5 |
@@ -78,7 +78,7 @@ Go プラグインが無い場合は上記 3 行のうち TODO の 1 件だけ�
 - `DeepNestingSample.atLimit()`（深さちょうど 5）
 - `todo_markers_sample.md` の `METHODOLOGY` / `TODOS`（単語境界で不一致）
 
-Symbol 列は構造系 Check（Large Class / Method / Parameters / Nesting）にだけ
+Symbol 列は構造系 Check（Large Type / Method / Parameters / Nesting）にだけ
 名前が入り、Tier 0（Large File / TODO）では空欄のままが正しい。
 
 ## 3. 操作の確認

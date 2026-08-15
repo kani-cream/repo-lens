@@ -5,6 +5,7 @@ import com.kanicream.repolens.model.AnalyzerFailure
 import com.kanicream.repolens.model.Finding
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.coroutineContext
+import kotlin.time.TimeSource
 import kotlinx.coroutines.ensureActive
 
 /**
@@ -24,7 +25,8 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
 
         for (analyzer in registry.activeFor(context)) {
             coroutineContext.ensureActive()
-            val startedAt = System.currentTimeMillis()
+            // Monotonic: wall-clock adjustments must not skew the diagnostics.
+            val startedAt = TimeSource.Monotonic.markNow()
             try {
                 for (finding in analyzer.analyze(context)) {
                     findingsById.putIfAbsent(finding.id, finding)
@@ -34,7 +36,7 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
             } catch (e: Exception) {
                 failures += AnalyzerFailure(analyzer.id, e.javaClass.simpleName)
             } finally {
-                elapsed[analyzer.id] = System.currentTimeMillis() - startedAt
+                elapsed[analyzer.id] = startedAt.elapsedNow().inWholeMilliseconds
             }
         }
 

@@ -66,10 +66,10 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
             row("Large file threshold (lines):") {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeFileLineThreshold)
             }
-            row("Large class threshold (body lines):") {
+            row("Large type threshold (body lines):") {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeClassLineThreshold)
             }
-            row("Large method threshold (body lines):") {
+            row("Large function / method threshold (body lines):") {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeMethodLineThreshold)
             }
             row("Parameter count threshold:") {

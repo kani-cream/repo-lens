@@ -29,7 +29,14 @@ internal class VfsAnalysisContext(
 
     private val exclusions = PathExclusions(request.settings.excludePatterns)
 
-    override suspend fun files(): List<AnalyzedFile> = readAction {
+    // Analyzers run sequentially within one analysis, so a plain field is a safe
+    // per-run memo. Without it every analyzer repeats the full scope walk.
+    private var cachedFiles: List<AnalyzedFile>? = null
+
+    override suspend fun files(): List<AnalyzedFile> =
+        cachedFiles ?: listFiles().also { cachedFiles = it }
+
+    private suspend fun listFiles(): List<AnalyzedFile> = readAction {
         val collector = FileCollector()
         when (scope) {
             is ResolvedScope.WholeProject ->

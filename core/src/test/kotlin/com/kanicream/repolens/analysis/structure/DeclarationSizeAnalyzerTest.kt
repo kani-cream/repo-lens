@@ -42,7 +42,7 @@ class DeclarationSizeAnalyzerTest {
         assertEquals(1, findings.size)
         val finding = findings.single()
         assertEquals("RL-C001", finding.analyzerId)
-        assertEquals("Large Class", finding.checkName)
+        assertEquals("Large Type", finding.checkName)
         assertEquals(Severity.WARNING, finding.severity)
         assertEquals("PaymentService", finding.symbol?.displayName)
         assertEquals(10, finding.location.startLine)

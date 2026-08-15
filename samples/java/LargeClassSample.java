@@ -1,6 +1,6 @@
 package samples.java;
 
-/** Triggers RL-C001 Large Class only: >500 body lines, every method small. */
+/** Triggers RL-C001 Large Type only: >500 body lines, every method small. */
 public class LargeClassSample {
     int method001() {
         int value = 1;

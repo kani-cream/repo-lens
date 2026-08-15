@@ -68,7 +68,8 @@ class ParameterCountAnalyzer : FunctionMetricAnalyzer() {
     override fun metric(declaration: CodeDeclaration): Int? = declaration.parameterCount
 
     override fun message(value: Int, threshold: Int): String =
-        "This method declares $value parameters, exceeding the configured threshold of $threshold."
+        "This function or method declares $value parameters, " +
+            "exceeding the configured threshold of $threshold."
 
     companion object {
         const val ID: String = "RL-M002"
@@ -86,7 +87,8 @@ class DeepNestingAnalyzer : FunctionMetricAnalyzer() {
     override fun metric(declaration: CodeDeclaration): Int? = declaration.maxNestingDepth
 
     override fun message(value: Int, threshold: Int): String =
-        "This method nests control flow $value levels deep, exceeding the configured threshold of $threshold."
+        "This function or method nests control flow $value levels deep, " +
+            "exceeding the configured threshold of $threshold."
 
     companion object {
         const val ID: String = "RL-M003"

@@ -61,11 +61,14 @@ abstract class DeclarationSizeAnalyzer(
     }
 }
 
-/** RL-C001: types (classes, interfaces, objects, structs) with an oversized body. */
+/**
+ * RL-C001: types (classes, interfaces, objects, structs) with an oversized body.
+ * The check ID keeps its historical name; the display name is language-neutral.
+ */
 class LargeClassAnalyzer : DeclarationSizeAnalyzer(DeclarationKind.TYPE, "type") {
 
     override val id: String = ID
-    override val checkName: String = "Large Class"
+    override val checkName: String = "Large Type"
 
     override fun threshold(context: AnalysisContext): Int = context.settings.largeClassLineThreshold
 
@@ -75,10 +78,10 @@ class LargeClassAnalyzer : DeclarationSizeAnalyzer(DeclarationKind.TYPE, "type")
 }
 
 /** RL-M001: functions and methods with an oversized body. */
-class LargeMethodAnalyzer : DeclarationSizeAnalyzer(DeclarationKind.FUNCTION, "method") {
+class LargeMethodAnalyzer : DeclarationSizeAnalyzer(DeclarationKind.FUNCTION, "function or method") {
 
     override val id: String = ID
-    override val checkName: String = "Large Method"
+    override val checkName: String = "Large Function / Method"
 
     override fun threshold(context: AnalysisContext): Int = context.settings.largeMethodLineThreshold
 

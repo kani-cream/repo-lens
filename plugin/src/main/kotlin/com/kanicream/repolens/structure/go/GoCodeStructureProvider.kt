@@ -25,7 +25,7 @@ import com.kanicream.repolens.structure.DeclarationKind
  *
  * Loaded only when the Go plugin is present (see repo-lens-go.xml). Go has no class
  * bodies — methods live outside their receiver type — so this provider emits FUNCTION
- * declarations only and no TYPE entries: a Large Class finding would be meaningless
+ * declarations only and no TYPE entries: a Large Type finding would be meaningless
  * (docs/design.md §4.4: don't force Go into Java's shape).
  */
 internal class GoCodeStructureProvider : CodeStructureProvider {

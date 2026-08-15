@@ -1,6 +1,6 @@
 package samples.java;
 
-/** Triggers RL-M001 Large Method only: one method with a >80-line body. */
+/** Triggers RL-M001 Large Function / Method only: one method with a >80-line body. */
 public class LargeMethodSample {
     int oversized() {
         int total = 0;

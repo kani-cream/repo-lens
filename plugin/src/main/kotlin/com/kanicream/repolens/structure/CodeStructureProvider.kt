@@ -9,8 +9,8 @@ import com.kanicream.repolens.structure.CodeStructure
  * Supplies the structural view of a file for one family of languages.
  *
  * This is the seam language providers plug into. Core registers no implementation of its
- * own: the UAST provider is contributed by an optional descriptor that only loads when
- * the Java plugin is present, and Go / JS providers will arrive the same way (v0.4).
+ * own; each provider (UAST for Java/Kotlin, Go, JavaScript/TypeScript) is contributed by
+ * an optional descriptor that only loads when its language plugin is present.
  * Implementations are called inside a read action.
  */
 internal interface CodeStructureProvider {

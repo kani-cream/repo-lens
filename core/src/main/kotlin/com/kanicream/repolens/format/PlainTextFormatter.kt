@@ -9,7 +9,7 @@ package com.kanicream.repolens.format
  */
 object PlainTextFormatter {
 
-    /** One line per finding: `Warning | Large Method | path:5-96 | symbol | 92 / 80 | reason`. */
+    /** One line per finding: `Warning | Large Function / Method | path:5-96 | symbol | 92 / 80 | reason`. */
     fun formatResult(items: List<CopyItem>): String =
         items.joinToString("\n") { resultLine(it) } + "\n"
 

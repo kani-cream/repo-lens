@@ -202,7 +202,7 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         )
 
         val checks = result.findings.map { it.checkName }.distinct().sorted()
-        assertEquals(listOf("Large Class", "Large Method"), checks)
+        assertEquals(listOf("Large Function / Method", "Large Type"), checks)
 
         val method = result.findings.single { it.analyzerId == LargeMethodAnalyzer.ID }
         assertEquals("Sample.big()", method.symbol?.displayName)
