@@ -66,6 +66,7 @@ object MarkdownAiFormatter {
         appendLine("- Location: `${finding.location.lineRangeText}`")
         finding.measuredValue?.let { appendLine("- Value: ${MetricFormat.format(it)}") }
         finding.threshold?.let { appendLine("- Threshold: ${MetricFormat.format(it)}") }
+        finding.confidence?.let { appendLine("- Confidence: ${it.displayName}") }
         appendLine()
         appendLine("### Reason")
         appendLine()

@@ -203,6 +203,7 @@ internal class RepoLensPanel(private val project: Project) :
     override fun analysisFinished(scopeType: AnalysisScopeType, result: AnalysisResult) {
         allFindings = result.findings
         failedAnalyzerCount = result.failures.size
+        skippedAnalyzers = result.skips
         setRunning(false)
         repopulateCheckFilter()
         applyFilters()
@@ -245,6 +246,9 @@ internal class RepoLensPanel(private val project: Project) :
         val ignoredCount = suppressed.count { policy.suppressionOf(it) == SuppressionKind.IGNORED }
         statusLabel.text =
             statusText(filter, visible, base.size, ignoredCount, suppressed.size - ignoredCount)
+        statusLabel.toolTipText = skippedAnalyzers
+            .joinToString("<br>") { "${it.analyzerId}: ${it.reason}" }
+            .ifEmpty { null }
         onSelectionChanged()
     }
 
@@ -276,10 +280,17 @@ internal class RepoLensPanel(private val project: Project) :
         } else {
             "$counts | ${(ignoredCount + ruleSuppressedCount)} hidden (${hiddenParts.joinToString(", ")})"
         }
-        return if (failedAnalyzerCount == 0) {
+        val withSkips = if (skippedAnalyzers.isEmpty()) {
             withHidden
         } else {
-            "$withHidden | $failedAnalyzerCount analyzer(s) failed"
+            // e.g. "1 check skipped (indexing)" - the reason itself is in the log and
+            // in the tooltip via the detail text of any run; keep the status short.
+            "$withHidden | ${skippedAnalyzers.size} check(s) skipped"
+        }
+        return if (failedAnalyzerCount == 0) {
+            withSkips
+        } else {
+            "$withSkips | $failedAnalyzerCount analyzer(s) failed"
         }
     }
 
@@ -324,6 +335,7 @@ internal class RepoLensPanel(private val project: Project) :
     }
 
     private var failedAnalyzerCount = 0
+    private var skippedAnalyzers: List<com.kanicream.repolens.model.AnalyzerSkip> = emptyList()
 
     private fun setRunning(running: Boolean) {
         analyzeButton.isEnabled = !running
@@ -372,6 +384,7 @@ internal class RepoLensPanel(private val project: Project) :
             null -> {}
         }
         appendLine("${finding.checkName} (${finding.severity.displayName})")
+        finding.confidence?.let { appendLine("Confidence: ${it.displayName}") }
         appendLine("File: ${finding.location.filePath}")
         finding.symbol?.let { appendLine("Symbol: ${it.displayName}") }
         appendLine("Location: ${finding.location.lineRangeText}")

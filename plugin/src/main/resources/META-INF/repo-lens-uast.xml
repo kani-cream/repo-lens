@@ -8,5 +8,6 @@
     <extensions defaultExtensionNs="com.kanicream.repolens">
         <codeStructureProvider
             implementation="com.kanicream.repolens.structure.uast.UastCodeStructureProvider"/>
+        <analyzer implementation="com.kanicream.repolens.structure.uast.UnusedCandidateAnalyzer"/>
     </extensions>
 </idea-plugin>

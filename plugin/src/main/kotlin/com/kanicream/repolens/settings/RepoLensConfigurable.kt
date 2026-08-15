@@ -10,11 +10,11 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
-import com.kanicream.repolens.analysis.DefaultAnalyzers
+import com.kanicream.repolens.analysis.ProjectAnalyzers
 import com.kanicream.repolens.structure.ProviderCapabilities
 
 /** Project settings UI: per-check toggles, thresholds, exclusions, and copy limits. */
-class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
+class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Repo Lens") {
 
     private val state: RepoLensSettings.State = RepoLensSettings.getInstance(project).getState()
 
@@ -37,7 +37,7 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
             }
         }
         group("Checks") {
-            DefaultAnalyzers.create().forEach { analyzer ->
+            ProjectAnalyzers.all(project).forEach { analyzer ->
                 row {
                     checkBox("${analyzer.checkName} (${analyzer.id})")
                         .bindSelected(

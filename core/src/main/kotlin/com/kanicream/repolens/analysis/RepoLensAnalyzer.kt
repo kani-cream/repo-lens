@@ -13,6 +13,13 @@ import com.kanicream.repolens.model.Finding
  * Future language providers plug in by contributing additional implementations through
  * the [AnalyzerRegistry]; the core must never need to change for that.
  */
+/**
+ * Thrown by an analyzer that cannot run right now for an environmental reason the user
+ * should see - most prominently "the index is still being built". A skip is a normal
+ * state, reported next to the results, never an error.
+ */
+class AnalyzerSkippedException(val reason: String) : Exception(reason)
+
 interface RepoLensAnalyzer {
     /** Stable check ID, e.g. `RL-F001`. Used for dedup, settings, and logging. */
     val id: String

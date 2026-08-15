@@ -1,6 +1,17 @@
 package com.kanicream.repolens.model
 
 /**
+ * How certain an analyzer is that a finding deserves attention. Absent for checks whose
+ * metric is exact (a line count is a line count); present where the analysis has known
+ * blind spots, like reference search missing reflection.
+ */
+enum class Confidence(val displayName: String) {
+    LOW("Low"),
+    MEDIUM("Medium"),
+    HIGH("High"),
+}
+
+/**
  * A single review candidate produced by an analyzer.
  *
  * Findings are evidence for review prioritization, not defect verdicts. They must stay
@@ -19,6 +30,7 @@ data class Finding(
     val symbol: SymbolInfo? = null,
     val measuredValue: Double? = null,
     val threshold: Double? = null,
+    val confidence: Confidence? = null,
     /** Analyzer-specific extras (e.g. TODO marker type). Values must never contain secrets. */
     val metadata: Map<String, String> = emptyMap(),
 ) {

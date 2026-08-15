@@ -30,6 +30,11 @@
     <extensionPoints>
         <extensionPoint name="codeStructureProvider" interface="com.kanicream.repolens.structure.CodeStructureProvider"
                         dynamic="true"/>
+        <!-- Analyzers contributed by optional language descriptors. Core analyzers come
+             from DefaultAnalyzers; this point exists for checks that need language
+             plugins, so IDEs without them simply lack the check. -->
+        <extensionPoint name="analyzer" interface="com.kanicream.repolens.analysis.RepoLensAnalyzer"
+                        area="IDEA_PROJECT" dynamic="true"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">

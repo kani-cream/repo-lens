@@ -51,9 +51,21 @@ Project スコープでも検出はされるが、`docs/` の設計書自体が�
 | TODO / FIXME | `samples/kotlin/KotlinSamples.kt` | *(空欄)* | *(空欄)* ×2 |
 
 | Circular Dependency | `samples/java/cycle/alpha/Alpha.java` | *(空欄)* | 2 |
+| Unused Candidate | `samples/java/unused/OrphanSample.java` | `OrphanSample` / `OrphanSample.neverCalled()` | *(空欄)* |
 
 Circular Dependency は Detail に `Cycle edges:`（各辺の file:line）、Copy for AI に
 `### Dependency cycle` セクションが出る。ダブルクリックで import 行へ飛ぶ。
+
+Unused Candidate の注意点:
+
+- **samples の public 宣言はほぼすべて候補として出る**（サンプルはどこからも
+  参照されないため）。表に無い Unused Candidate 行が複数出るのは正常
+- 循環サンプルの `Alpha` / `Beta` は互いに参照し合っているため**出ない**
+  （参照検索が機能している証拠）
+- Detail に `Confidence: Low` と、Reflection / DI 等を検出できない旨の
+  限界説明が出る。Copy for AI にも `- Confidence: Low` が入る
+- Indexing 中に Analyze すると、この Check だけがスキップされ、ステータスに
+  `1 check(s) skipped`（ツールチップに理由）が出る
 
 **Go プラグインがある場合のみ**（Settings → Plugins で Go をインストール。Ultimate ライセンスが必要）:
 

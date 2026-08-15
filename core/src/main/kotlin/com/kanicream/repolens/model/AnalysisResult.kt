@@ -9,10 +9,17 @@ data class AnalyzerFailure(
     val exceptionType: String,
 )
 
+/** An analyzer that declined to run, with the user-facing reason (e.g. indexing). */
+data class AnalyzerSkip(
+    val analyzerId: String,
+    val reason: String,
+)
+
 /** Aggregated outcome of one analysis run. */
 data class AnalysisResult(
     val findings: List<Finding>,
     val failures: List<AnalyzerFailure> = emptyList(),
+    val skips: List<AnalyzerSkip> = emptyList(),
     /** Wall-clock per executed analyzer, for the diagnostics log (design 15.1). */
     val elapsedByAnalyzer: Map<String, Long> = emptyMap(),
 ) {

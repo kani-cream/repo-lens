@@ -9,7 +9,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
-import com.kanicream.repolens.analysis.DefaultAnalyzers
+import com.kanicream.repolens.analysis.ProjectAnalyzers
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.AnalysisScopeType
 import com.kanicream.repolens.platform.ScopeResolution
@@ -32,7 +32,7 @@ class RepoLensAnalysisService(
     private val coroutineScope: CoroutineScope,
 ) {
 
-    private val orchestrator = AnalysisOrchestrator(AnalyzerRegistry(DefaultAnalyzers.create()))
+    private val orchestrator = AnalysisOrchestrator(AnalyzerRegistry(ProjectAnalyzers.all(project)))
 
     @Volatile
     private var currentJob: Job? = null

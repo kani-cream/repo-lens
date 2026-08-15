@@ -1,5 +1,6 @@
 package com.kanicream.repolens.format
 
+import com.kanicream.repolens.model.Confidence
 import com.kanicream.repolens.model.Finding
 import com.kanicream.repolens.model.Severity
 import com.kanicream.repolens.model.SourceLocation
@@ -67,6 +68,20 @@ class MarkdownAiFormatterTest {
 
         assertFalse(markdown.contains("- Symbol:"))
         assertFalse(markdown.contains("### Code"))
+    }
+
+    @Test
+    fun `confidence is rendered when present and omitted otherwise`() {
+        val withConfidence = todoFinding().copy(confidence = Confidence.LOW)
+        val markdown = MarkdownAiFormatter.format(
+            AiCopyRequest("p", "Project", listOf(CopyItem(withConfidence, snippet = null))),
+        )
+        assertTrue(markdown.contains("- Confidence: Low"))
+
+        val without = MarkdownAiFormatter.format(
+            AiCopyRequest("p", "Project", listOf(CopyItem(todoFinding(), snippet = null))),
+        )
+        assertFalse(without.contains("- Confidence:"))
     }
 
     @Test

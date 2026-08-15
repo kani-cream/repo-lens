@@ -149,6 +149,24 @@ class AnalysisOrchestratorTest {
     }
 
     @Test
+    fun `a skipped analyzer is reported with its reason not as a failure`() = runTest {
+        val orchestrator = AnalysisOrchestrator(
+            AnalyzerRegistry(
+                listOf(
+                    stubAnalyzer("A-INDEXED") { throw AnalyzerSkippedException("Waiting for indexing") },
+                    stubAnalyzer("A-OK") { listOf(finding("A-OK", "a.kt", 1)) },
+                ),
+            ),
+        )
+
+        val result = orchestrator.analyze(context())
+
+        assertEquals(1, result.findings.size)
+        assertTrue(result.failures.isEmpty())
+        assertEquals(listOf("A-INDEXED" to "Waiting for indexing"), result.skips.map { it.analyzerId to it.reason })
+    }
+
+    @Test
     fun `elapsed time is recorded per executed analyzer including failed ones`() = runTest {
         val orchestrator = AnalysisOrchestrator(
             AnalyzerRegistry(

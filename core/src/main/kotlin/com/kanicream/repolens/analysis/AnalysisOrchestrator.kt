@@ -2,6 +2,7 @@ package com.kanicream.repolens.analysis
 
 import com.kanicream.repolens.model.AnalysisResult
 import com.kanicream.repolens.model.AnalyzerFailure
+import com.kanicream.repolens.model.AnalyzerSkip
 import com.kanicream.repolens.model.Finding
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.coroutineContext
@@ -21,6 +22,7 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
     suspend fun analyze(context: AnalysisContext): AnalysisResult {
         val findingsById = LinkedHashMap<String, Finding>()
         val failures = mutableListOf<AnalyzerFailure>()
+        val skips = mutableListOf<AnalyzerSkip>()
         val elapsed = LinkedHashMap<String, Long>()
 
         for (analyzer in registry.activeFor(context)) {
@@ -33,6 +35,8 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
                 }
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: AnalyzerSkippedException) {
+                skips += AnalyzerSkip(analyzer.id, e.reason)
             } catch (e: Exception) {
                 failures += AnalyzerFailure(analyzer.id, e.javaClass.simpleName)
             } finally {
@@ -46,6 +50,6 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
                 .thenBy { it.location.startLine }
                 .thenBy { it.analyzerId },
         )
-        return AnalysisResult(sorted, failures, elapsed)
+        return AnalysisResult(sorted, failures, skips, elapsed)
     }
 }
