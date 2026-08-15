@@ -1,6 +1,7 @@
 package com.kanicream.repolens.vcs.git
 
 import com.intellij.openapi.project.Project
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.vcs.BranchDiffProvider
 import com.kanicream.repolens.vcs.BranchDiffResult
 import com.kanicream.repolens.vcs.GitDiffParser
@@ -23,27 +24,26 @@ internal class GitBranchDiffProvider : BranchDiffProvider {
 
     override fun resolve(project: Project, baseBranchSetting: String): BranchDiffResult {
         val repository = GitRepositoryManager.getInstance(project).repositories.firstOrNull()
-            ?: return BranchDiffResult.Unavailable("No Git repository is configured for this project")
+            ?: return BranchDiffResult.Unavailable(RepoLensBundle.message("error.no.git.repository"))
 
         val base = resolveBase(repository, baseBranchSetting.trim())
             ?: return BranchDiffResult.Unavailable(
                 if (baseBranchSetting.isBlank()) {
-                    "No base branch found: none of ${AUTO_BASE_CANDIDATES.joinToString(", ")} exist. " +
-                        "Set one in Settings | Tools | Repo Lens."
+                    RepoLensBundle.message("error.no.base.branch.auto", AUTO_BASE_CANDIDATES.joinToString(", "))
                 } else {
-                    "Base branch '${baseBranchSetting.trim()}' does not exist in this repository"
+                    RepoLensBundle.message("error.base.branch.missing", baseBranchSetting.trim())
                 },
             )
 
         val mergeBase = git(project, repository, GitCommand.MERGE_BASE, base, "HEAD")
-            ?: return BranchDiffResult.Unavailable("Cannot determine the merge base with '$base'")
+            ?: return BranchDiffResult.Unavailable(RepoLensBundle.message("error.no.merge.base", base))
         val mergeBaseHash = mergeBase.firstOrNull()?.trim()
-            ?: return BranchDiffResult.Unavailable("Cannot determine the merge base with '$base'")
+            ?: return BranchDiffResult.Unavailable(RepoLensBundle.message("error.no.merge.base", base))
 
         val numstat = git(project, repository, GitCommand.DIFF, "--numstat", "--find-renames", mergeBaseHash)
-            ?: return BranchDiffResult.Unavailable("git diff failed against '$base'")
+            ?: return BranchDiffResult.Unavailable(RepoLensBundle.message("error.git.diff.failed", base))
         val nameStatus = git(project, repository, GitCommand.DIFF, "--name-status", "--find-renames", mergeBaseHash)
-            ?: return BranchDiffResult.Unavailable("git diff failed against '$base'")
+            ?: return BranchDiffResult.Unavailable(RepoLensBundle.message("error.git.diff.failed", base))
 
         val changes = GitDiffParser.combine(
             GitDiffParser.parseNumstat(numstat),

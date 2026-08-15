@@ -1,5 +1,7 @@
 package com.kanicream.repolens.structure
 
+import com.kanicream.repolens.RepoLensBundle
+
 /**
  * Availability of one structure provider in the current IDE.
  *
@@ -23,25 +25,25 @@ data class ProviderCapability(
 object ProviderCapabilities {
 
     private data class Entry(
-        val displayName: String,
-        val requirement: String,
+        val nameKey: String,
+        val requirementKey: String,
         val providerClassName: String,
     )
 
     private val ENTRIES = listOf(
         Entry(
-            displayName = "Java / Kotlin structure",
-            requirement = "Requires the bundled Java plugin (UAST)",
+            nameKey = "capability.uast",
+            requirementKey = "capability.uast.requirement",
             providerClassName = "com.kanicream.repolens.structure.uast.UastCodeStructureProvider",
         ),
         Entry(
-            displayName = "Go structure",
-            requirement = "Requires the Go plugin",
+            nameKey = "capability.go",
+            requirementKey = "capability.go.requirement",
             providerClassName = "com.kanicream.repolens.structure.go.GoCodeStructureProvider",
         ),
         Entry(
-            displayName = "JavaScript / TypeScript structure",
-            requirement = "Requires the JavaScript plugin",
+            nameKey = "capability.jsts",
+            requirementKey = "capability.jsts.requirement",
             providerClassName = "com.kanicream.repolens.structure.jsts.JsTsCodeStructureProvider",
         ),
     )
@@ -51,8 +53,8 @@ object ProviderCapabilities {
         val loaded = CodeStructureProvider.EP_NAME.extensionList.map { it.javaClass.name }.toSet()
         return ENTRIES.map { entry ->
             ProviderCapability(
-                displayName = entry.displayName,
-                requirement = entry.requirement,
+                displayName = RepoLensBundle.message(entry.nameKey),
+                requirement = RepoLensBundle.message(entry.requirementKey),
                 available = entry.providerClassName in loaded,
             )
         }

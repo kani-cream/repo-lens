@@ -23,15 +23,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** The three clipboard exports offered by the tool window. */
-enum class CopyStyle(val actionName: String) {
+enum class CopyStyle(val labelKey: String) {
     /** Plain one-line-per-finding summary, no code. */
-    RESULT("Copy"),
+    RESULT("copy.result"),
 
     /** The summary plus each finding's bounded code snippet. */
-    WITH_CODE("Copy with Code"),
+    WITH_CODE("copy.with.code"),
 
     /** Markdown structured for pasting into an external AI chat. */
-    FOR_AI("Copy for AI"),
+    FOR_AI("copy.for.ai"),
 }
 
 /**

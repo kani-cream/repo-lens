@@ -1,6 +1,8 @@
 package com.kanicream.repolens.ui
 
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.format.MetricFormat
+import com.kanicream.repolens.uiName
 import com.kanicream.repolens.model.Finding
 import javax.swing.table.AbstractTableModel
 
@@ -27,7 +29,7 @@ internal class FindingTableModel : AbstractTableModel() {
     override fun getValueAt(rowIndex: Int, columnIndex: Int): Any {
         val finding = findings[rowIndex]
         return when (columnIndex) {
-            COLUMN_SEVERITY -> finding.severity.displayName
+            COLUMN_SEVERITY -> finding.severity.uiName()
             COLUMN_CHECK -> finding.checkName
             COLUMN_FILE -> finding.location.filePath
             COLUMN_SYMBOL -> finding.symbol?.displayName.orEmpty()
@@ -51,7 +53,13 @@ internal class FindingTableModel : AbstractTableModel() {
         const val COLUMN_LOCATION = 4
         const val COLUMN_VALUE_THRESHOLD = 5
 
-        private val COLUMNS =
-            arrayOf("Severity", "Check", "File", "Symbol", "Location", "Value / Threshold")
+        private val COLUMNS = arrayOf(
+            RepoLensBundle.message("column.severity"),
+            RepoLensBundle.message("column.check"),
+            RepoLensBundle.message("column.file"),
+            RepoLensBundle.message("column.symbol"),
+            RepoLensBundle.message("column.location"),
+            RepoLensBundle.message("column.value.threshold"),
+        )
     }
 }

@@ -213,7 +213,21 @@ Project を Analyze する。
 5. **再解析安定性** — 再 Analyze しても ignored の Finding は ignored のまま
    （stable ID によるため。対象行が編集で移動した場合は新 ID になり再表示される）
 
-## 10. トラブルシューティング
+## 10. 日本語 UI の確認
+
+サンドボックスの Settings → Appearance & Behavior → System Settings →
+Language and Region（または Region & Language）で言語を **日本語** にして再起動。
+
+1. Tool Window のボタン（解析 / 停止 / コピー / コード付きコピー / AI 向けコピー）、
+   フィルタ（重大度 / チェック / 非表示分を表示）、カラムヘッダが日本語になる
+2. Scope コンボが「プロジェクト / 現在のファイル / … / ブランチ差分」になる
+3. ステータス（合計 N / 非表示 N 件…）とエラー（Base branch が存在しない等）が日本語
+4. Settings → Tools → Repo Lens の全ラベルが日本語
+5. **Finding の Reason 文と Copy 出力は英語のまま**（成果物は言語設定に依存しない、
+   という設計。docs/checks.md 参照）
+6. 言語を English に戻すと全て英語に戻る
+
+## 11. トラブルシューティング
 
 - サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log`
 - 解析の診断ログ: 同ログに `RepoLensAnalysisService - analysis scope=... RL-F001=12ms ...`

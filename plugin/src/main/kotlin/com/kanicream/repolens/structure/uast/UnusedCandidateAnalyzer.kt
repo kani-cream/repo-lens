@@ -17,6 +17,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiSearchHelper
 import com.intellij.psi.search.PsiSearchHelper.SearchCostResult
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.analysis.AnalysisContext
 import com.kanicream.repolens.analysis.AnalyzerSkippedException
 import com.kanicream.repolens.analysis.RepoLensAnalyzer
@@ -60,10 +61,7 @@ internal class UnusedCandidateAnalyzer(private val project: Project) : RepoLensA
 
     override suspend fun analyze(context: AnalysisContext): List<Finding> {
         if (DumbService.getInstance(project).isDumb) {
-            throw AnalyzerSkippedException(
-                "Unused Candidate needs the index and is skipped while indexing is in progress. " +
-                    "Re-run the analysis when indexing finishes.",
-            )
+            throw AnalyzerSkippedException(RepoLensBundle.message("skip.unused.candidate.indexing"))
         }
 
         // Two phases with separate short read actions (issue #17): collecting the

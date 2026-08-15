@@ -31,6 +31,8 @@
         anywhere, and writes the clipboard only on an explicit Copy action.</p>
     ]]></description>
 
+    <resource-bundle>messages.RepoLensBundle</resource-bundle>
+
     <depends>com.intellij.modules.platform</depends>
     <!-- Local Changes scope. Present in every JetBrains IDE; a project without a
          configured VCS is handled at runtime, not by disabling the plugin. -->
@@ -73,9 +75,7 @@
 
     <actions>
         <action id="com.kanicream.repolens.AnalyzeSelection"
-                class="com.kanicream.repolens.action.AnalyzeSelectionAction"
-                text="Analyze with Repo Lens"
-                description="Collect Repo Lens review candidates for the selected files">
+                class="com.kanicream.repolens.action.AnalyzeSelectionAction">
             <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </action>
     </actions>

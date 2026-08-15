@@ -3,6 +3,7 @@ package com.kanicream.repolens.platform
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.model.AnalysisScopeType
 import com.kanicream.repolens.vcs.BranchDiffProvider
 import com.kanicream.repolens.vcs.VcsFacade
@@ -26,24 +27,22 @@ internal object ScopeResolver {
 
         AnalysisScopeType.CURRENT_FILE -> currentFile(project)
             ?.let { ScopeResolution.Resolved(ResolvedScope.ExplicitFiles(listOf(it))) }
-            ?: ScopeResolution.Unavailable("No file is open in the editor")
+            ?: ScopeResolution.Unavailable(RepoLensBundle.message("error.no.open.file"))
 
         AnalysisScopeType.MODULE -> currentFile(project)
             ?.let { ScopeResolution.Resolved(ResolvedScope.ContainingModule(it)) }
-            ?: ScopeResolution.Unavailable("Open a file to analyze the module that contains it")
+            ?: ScopeResolution.Unavailable(RepoLensBundle.message("error.no.file.for.module"))
 
         AnalysisScopeType.SELECTED_FILES -> selectedFiles.filter { it.isValid }
             .takeIf { it.isNotEmpty() }
             ?.let { ScopeResolution.Resolved(ResolvedScope.ExplicitFiles(it)) }
-            ?: ScopeResolution.Unavailable(
-                "Select files in the Project View and choose Analyze with Repo Lens",
-            )
+            ?: ScopeResolution.Unavailable(RepoLensBundle.message("error.no.selection"))
 
         AnalysisScopeType.LOCAL_CHANGES -> localChanges(project)
 
         AnalysisScopeType.BRANCH_DIFF ->
             if (BranchDiffProvider.first() == null) {
-                ScopeResolution.Unavailable("Branch Diff needs the Git plugin, which is not available")
+                ScopeResolution.Unavailable(RepoLensBundle.message("error.no.git.plugin"))
             } else {
                 // The actual git work happens on the background thread inside the run.
                 ScopeResolution.Resolved(ResolvedScope.BranchDiff(baseBranchSetting))
@@ -52,11 +51,11 @@ internal object ScopeResolver {
 
     private fun localChanges(project: Project): ScopeResolution {
         if (!VcsFacade.hasActiveVcs(project)) {
-            return ScopeResolution.Unavailable("No version control system is configured for this project")
+            return ScopeResolution.Unavailable(RepoLensBundle.message("error.no.vcs"))
         }
         val changed = VcsFacade.locallyChangedFiles(project)
         return if (changed.isEmpty()) {
-            ScopeResolution.Unavailable("No local changes to analyze")
+            ScopeResolution.Unavailable(RepoLensBundle.message("error.no.local.changes"))
         } else {
             ScopeResolution.Resolved(ResolvedScope.DerivedFiles(changed))
         }

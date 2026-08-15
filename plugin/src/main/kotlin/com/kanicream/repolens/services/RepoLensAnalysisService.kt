@@ -18,6 +18,8 @@ import com.kanicream.repolens.model.SettingsSnapshot
 import com.kanicream.repolens.vcs.GitHistoryProvider
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.AnalysisScopeType
+import com.kanicream.repolens.RepoLensBundle
+import com.kanicream.repolens.uiName
 import com.kanicream.repolens.platform.ScopeResolution
 import com.kanicream.repolens.platform.ScopeResolver
 import com.kanicream.repolens.platform.VfsAnalysisContext
@@ -84,7 +86,13 @@ class RepoLensAnalysisService(
                         throw e
                     } catch (e: com.kanicream.repolens.vcs.ScopeUnavailableException) {
                         // A reasoned, user-fixable condition - not an error worth a stack trace.
-                        onEdt { publish { it.analysisFailed(e.message ?: "Scope unavailable") } }
+                        onEdt {
+                            publish {
+                                it.analysisFailed(
+                                    e.message ?: RepoLensBundle.message("error.scope.unavailable"),
+                                )
+                            }
+                        }
                     } catch (e: Throwable) {
                         LOG.warn("Repo Lens analysis failed", e)
                         onEdt { publish { it.analysisFailed("Analysis failed: ${e.javaClass.simpleName}") } }
@@ -157,7 +165,7 @@ class RepoLensAnalysisService(
     }
 
     private fun progressTitle(scopeType: AnalysisScopeType): String =
-        "Repo Lens: analyzing ${scopeType.displayName.lowercase()}"
+        RepoLensBundle.message("progress.analyzing", scopeType.uiName())
 
     private fun publish(action: (RepoLensAnalysisListener) -> Unit) {
         action(project.messageBus.syncPublisher(RepoLensAnalysisListener.TOPIC))

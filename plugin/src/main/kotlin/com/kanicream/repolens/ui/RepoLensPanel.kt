@@ -14,6 +14,7 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.enrich.GitMetadataKeys
@@ -31,6 +32,7 @@ import com.kanicream.repolens.services.RepoLensAnalysisService
 import com.kanicream.repolens.settings.RepoLensSettings
 import com.kanicream.repolens.suppression.SuppressionKind
 import com.kanicream.repolens.suppression.SuppressionPolicy
+import com.kanicream.repolens.uiName
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.GridLayout
@@ -59,16 +61,16 @@ internal class RepoLensPanel(private val project: Project) :
     private val tableModel = FindingTableModel()
     private val table = JBTable(tableModel)
     private val detailArea = JBTextArea()
-    private val statusLabel = JBLabel("Ready")
+    private val statusLabel = JBLabel(RepoLensBundle.message("toolwindow.status.ready"))
     private val scopeCombo = ComboBox(AnalysisScopeType.entries.toTypedArray())
     private val searchField = SearchTextField()
     private val severityCombo = ComboBox(SEVERITY_CHOICES.toTypedArray())
     private val checkCombo = ComboBox(arrayOf(ALL_CHECKS))
-    private val showHiddenCheckBox = JBCheckBox("Show hidden")
-    private val analyzeButton = JButton("Analyze")
-    private val stopButton = JButton("Stop")
+    private val showHiddenCheckBox = JBCheckBox(RepoLensBundle.message("toolwindow.show.hidden"))
+    private val analyzeButton = JButton(RepoLensBundle.message("toolwindow.analyze"))
+    private val stopButton = JButton(RepoLensBundle.message("toolwindow.stop"))
     private val copyButtons: Map<CopyStyle, JButton> =
-        CopyStyle.entries.associateWith { JButton(it.actionName) }
+        CopyStyle.entries.associateWith { JButton(RepoLensBundle.message(it.labelKey)) }
 
     /** Selection captured by the Project View action, re-used when Analyze is pressed again. */
     private var selectedFiles: List<VirtualFile> = emptyList()
@@ -88,13 +90,13 @@ internal class RepoLensPanel(private val project: Project) :
     override fun dispose() = Unit
 
     private fun buildUi() {
-        scopeCombo.renderer = textListCellRenderer { it.displayName }
+        scopeCombo.renderer = textListCellRenderer { it.uiName() }
 
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
         // Click a column header to sort; selection already goes through
         // convertRowIndexToModel everywhere.
         table.autoCreateRowSorter = true
-        table.emptyText.setText("Run Analyze to collect review candidates")
+        table.emptyText.setText(RepoLensBundle.message("toolwindow.empty.text"))
 
         detailArea.isEditable = false
         detailArea.lineWrap = true
@@ -104,12 +106,12 @@ internal class RepoLensPanel(private val project: Project) :
         stopButton.isEnabled = false
         copyButtons.values.forEach { it.isEnabled = false }
 
-        searchField.textEditor.emptyText.setText("Search findings")
+        searchField.textEditor.emptyText.setText(RepoLensBundle.message("toolwindow.search.placeholder"))
         severityCombo.renderer = textListCellRenderer { it.label }
         checkCombo.renderer = textListCellRenderer { it }
 
         val actionRow = row().apply {
-            add(JBLabel("Scope:"))
+            add(JBLabel(RepoLensBundle.message("toolwindow.scope.label")))
             add(scopeCombo)
             add(analyzeButton)
             add(stopButton)
@@ -117,9 +119,9 @@ internal class RepoLensPanel(private val project: Project) :
         }
         val filterRow = row().apply {
             add(searchField)
-            add(JBLabel("Severity:"))
+            add(JBLabel(RepoLensBundle.message("toolwindow.severity.label")))
             add(severityCombo)
-            add(JBLabel("Check:"))
+            add(JBLabel(RepoLensBundle.message("toolwindow.check.label")))
             add(checkCombo)
             add(showHiddenCheckBox)
             add(statusLabel)
@@ -214,7 +216,7 @@ internal class RepoLensPanel(private val project: Project) :
         tableModel.setFindings(emptyList())
         detailArea.text = ""
         copyButtons.values.forEach { it.isEnabled = false }
-        statusLabel.text = "Analyzing ${scopeType.displayName.lowercase()}…"
+        statusLabel.text = RepoLensBundle.message("toolwindow.status.analyzing", scopeType.uiName())
     }
 
     override fun analysisFinished(scopeType: AnalysisScopeType, result: AnalysisResult) {
@@ -280,34 +282,38 @@ internal class RepoLensPanel(private val project: Project) :
         ruleSuppressedCount: Int,
     ): String {
         val shown = if (filter.isActive && visible.size != baseCount) {
-            "Showing ${visible.size} of $baseCount"
+            RepoLensBundle.message("toolwindow.status.showing", visible.size, baseCount)
         } else {
-            "Total $baseCount"
+            RepoLensBundle.message("toolwindow.status.total", baseCount)
         }
-        val counts = "$shown | Warning ${visible.count { it.severity == Severity.WARNING }} | " +
-            "Info ${visible.count { it.severity == Severity.INFO }}"
+        val counts = "$shown | " +
+            RepoLensBundle.message("toolwindow.status.warning", visible.count { it.severity == Severity.WARNING }) +
+            " | " +
+            RepoLensBundle.message("toolwindow.status.info", visible.count { it.severity == Severity.INFO })
         // Manual ignores and rule hits are different tools; lumping them into one number
         // reads as "why are there 34?" the first time a broad rule matches.
         val hiddenParts = buildList {
-            if (ignoredCount > 0) add("$ignoredCount ignored")
-            if (ruleSuppressedCount > 0) add("$ruleSuppressedCount by rules")
+            if (ignoredCount > 0) add(RepoLensBundle.message("toolwindow.status.hidden.ignored", ignoredCount))
+            if (ruleSuppressedCount > 0) add(RepoLensBundle.message("toolwindow.status.hidden.rules", ruleSuppressedCount))
         }
         val withHidden = if (hiddenParts.isEmpty()) {
             counts
         } else {
-            "$counts | ${(ignoredCount + ruleSuppressedCount)} hidden (${hiddenParts.joinToString(", ")})"
+            "$counts | " + RepoLensBundle.message(
+                "toolwindow.status.hidden",
+                ignoredCount + ruleSuppressedCount,
+                hiddenParts.joinToString(", "),
+            )
         }
         val withSkips = if (skippedAnalyzers.isEmpty()) {
             withHidden
         } else {
-            // e.g. "1 check skipped (indexing)" - the reason itself is in the log and
-            // in the tooltip via the detail text of any run; keep the status short.
-            "$withHidden | ${skippedAnalyzers.size} check(s) skipped"
+            "$withHidden | " + RepoLensBundle.message("toolwindow.status.skipped", skippedAnalyzers.size)
         }
         return if (failedAnalyzerCount == 0) {
             withSkips
         } else {
-            "$withSkips | $failedAnalyzerCount analyzer(s) failed"
+            "$withSkips | " + RepoLensBundle.message("toolwindow.status.failed", failedAnalyzerCount)
         }
     }
 
@@ -328,9 +334,9 @@ internal class RepoLensPanel(private val project: Project) :
                 val selected = selectedFindings()
                 ignoreItem.isEnabled = selected.isNotEmpty()
                 ignoreItem.text = if (selected.any { !settings.isFindingIgnored(it.id) }) {
-                    "Ignore Finding"
+                    RepoLensBundle.message("toolwindow.popup.ignore")
                 } else {
-                    "Stop Ignoring"
+                    RepoLensBundle.message("toolwindow.popup.unignore")
                 }
             }
 
@@ -343,7 +349,7 @@ internal class RepoLensPanel(private val project: Project) :
 
     override fun analysisCancelled() {
         setRunning(false)
-        statusLabel.text = "Analysis cancelled"
+        statusLabel.text = RepoLensBundle.message("toolwindow.status.cancelled")
     }
 
     override fun analysisFailed(reason: String) {
@@ -366,7 +372,7 @@ internal class RepoLensPanel(private val project: Project) :
         detailArea.text = when (selected.size) {
             0 -> ""
             1 -> detailText(selected.single())
-            else -> "${selected.size} findings selected"
+            else -> RepoLensBundle.message("toolwindow.selection.multiple", selected.size)
         }
         detailArea.caretPosition = 0
     }
@@ -374,7 +380,8 @@ internal class RepoLensPanel(private val project: Project) :
     private fun navigateToSelection() {
         val finding = selectedFindings().firstOrNull() ?: return
         if (!FindingNavigator.getInstance(project).navigate(finding)) {
-            statusLabel.text = "Cannot navigate: ${finding.location.filePath} not found"
+            statusLabel.text =
+                RepoLensBundle.message("toolwindow.status.cannot.navigate", finding.location.filePath)
         }
     }
 
@@ -382,7 +389,9 @@ internal class RepoLensPanel(private val project: Project) :
         val selected = selectedFindings()
         if (selected.isEmpty()) return
         FindingCopyService.getInstance(project).copy(selected, style, selectedScope().displayName) {
-            statusLabel.text = "Copied ${selected.size} finding(s) (${style.actionName})"
+            statusLabel.text = RepoLensBundle.message(
+                "toolwindow.status.copied", selected.size, RepoLensBundle.message(style.labelKey),
+            )
         }
     }
 
@@ -396,20 +405,23 @@ internal class RepoLensPanel(private val project: Project) :
 
     private fun detailText(finding: Finding): String = buildString {
         when (suppressionPolicy().suppressionOf(finding)) {
-            SuppressionKind.IGNORED -> appendLine("[Ignored by you]")
-            SuppressionKind.RULE -> appendLine("[Hidden by a suppress rule]")
+            SuppressionKind.IGNORED -> appendLine(RepoLensBundle.message("detail.ignored.by.you"))
+            SuppressionKind.RULE -> appendLine(RepoLensBundle.message("detail.hidden.by.rule"))
             null -> {}
         }
-        appendLine("${finding.checkName} (${finding.severity.displayName})")
-        finding.confidence?.let { appendLine("Confidence: ${it.displayName}") }
-        appendLine("File: ${finding.location.filePath}")
-        finding.symbol?.let { appendLine("Symbol: ${it.displayName}") }
-        appendLine("Location: ${finding.location.lineRangeText}")
+        appendLine("${finding.checkName} (${finding.severity.uiName()})")
+        finding.confidence?.let { appendLine(RepoLensBundle.message("detail.confidence", it.displayName)) }
+        appendLine(RepoLensBundle.message("detail.file", finding.location.filePath))
+        finding.symbol?.let { appendLine(RepoLensBundle.message("detail.symbol", it.displayName)) }
+        appendLine(RepoLensBundle.message("detail.location", finding.location.lineRangeText))
         finding.measuredValue?.let { value ->
-            val threshold = finding.threshold
-                ?.let { " (threshold ${MetricFormat.format(it)})" }
-                .orEmpty()
-            appendLine("Value: ${MetricFormat.format(value)}$threshold")
+            appendLine(
+                finding.threshold?.let {
+                    RepoLensBundle.message(
+                        "detail.value.threshold", MetricFormat.format(value), MetricFormat.format(it),
+                    )
+                } ?: RepoLensBundle.message("detail.value", MetricFormat.format(value)),
+            )
         }
         appendLine()
         append(finding.message)
@@ -422,20 +434,25 @@ internal class RepoLensPanel(private val project: Project) :
             val authors = finding.metadata[GitMetadataKeys.AUTHORS] ?: "?"
             val window = finding.metadata[GitMetadataKeys.WINDOW_DAYS] ?: "?"
             val touched = finding.metadata[GitMetadataKeys.LAST_MODIFIED_DAYS_AGO]
-                ?.let { ", last modified $it day(s) ago" }.orEmpty()
+                ?.let { RepoLensBundle.message("detail.git.last.modified", it) }.orEmpty()
             appendLine()
             appendLine()
-            append("Git: $commits commit(s) by $authors author(s) in the last $window days$touched")
+            append(RepoLensBundle.message("detail.git.prefix") + " ")
+            append(RepoLensBundle.message("detail.git", commits, authors, window) + touched)
         }
         finding.metadata[GitMetadataKeys.TODO_AGE_DAYS]?.let { age ->
-            val longLived = if (finding.metadata[GitMetadataKeys.TODO_LONG_LIVED] != null) " (long-lived)" else ""
+            val longLived = if (finding.metadata[GitMetadataKeys.TODO_LONG_LIVED] != null) {
+                RepoLensBundle.message("detail.marker.age.long.lived")
+            } else {
+                ""
+            }
             appendLine()
-            append("Marker age: $age day(s)$longLived")
+            append(RepoLensBundle.message("detail.marker.age", age) + longLived)
         }
         finding.metadata[CircularDependencyAnalyzer.METADATA_EVIDENCE]?.let { evidence ->
             appendLine()
             appendLine()
-            appendLine("Cycle edges:")
+            appendLine(RepoLensBundle.message("detail.cycle.edges"))
             append(evidence)
         }
     }
@@ -445,10 +462,10 @@ internal class RepoLensPanel(private val project: Project) :
 
     companion object {
         private const val NAVIGATE_ACTION_KEY = "repoLens.navigateToFinding"
-        private const val ALL_CHECKS = "All checks"
+        private val ALL_CHECKS = RepoLensBundle.message("toolwindow.check.all")
 
         private val SEVERITY_CHOICES: List<SeverityChoice> =
-            listOf(SeverityChoice("All", null)) +
-                Severity.entries.map { SeverityChoice(it.displayName, it) }
+            listOf(SeverityChoice(RepoLensBundle.message("toolwindow.severity.all"), null)) +
+                Severity.entries.map { SeverityChoice(RepoLensBundle.message("severity.${it.name}"), it) }
     }
 }

@@ -9,6 +9,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileVisitor
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.analysis.AnalysisContext
 import com.kanicream.repolens.analysis.AnalyzedFile
 import com.kanicream.repolens.model.AnalysisRequest
@@ -52,7 +53,7 @@ internal class VfsAnalysisContext(
      */
     private suspend fun branchDiffFiles(scope: ResolvedScope.BranchDiff): List<AnalyzedFile> {
         val provider = BranchDiffProvider.first()
-            ?: throw ScopeUnavailableException("Branch Diff needs the Git plugin, which is not available")
+            ?: throw ScopeUnavailableException(RepoLensBundle.message("error.no.git.plugin"))
         val success = when (val result = provider.resolve(project, scope.baseBranchSetting)) {
             is BranchDiffResult.Unavailable -> throw ScopeUnavailableException(result.reason)
             is BranchDiffResult.Success -> result

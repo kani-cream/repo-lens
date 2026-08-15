@@ -10,6 +10,7 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
+import com.kanicream.repolens.RepoLensBundle
 import com.kanicream.repolens.analysis.ProjectAnalyzers
 import com.kanicream.repolens.structure.ProviderCapabilities
 
@@ -19,24 +20,21 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
     private val state: RepoLensSettings.State = RepoLensSettings.getInstance(project).getState()
 
     override fun createPanel(): DialogPanel = panel {
-        group("Language Capabilities") {
+        group(RepoLensBundle.message("settings.group.capabilities")) {
             row {
-                comment(
-                    "Universal checks (Large File, TODO / FIXME) run for every text " +
-                        "language. Structure checks need a language provider:",
-                )
+                comment(RepoLensBundle.message("settings.capabilities.intro"))
             }
             ProviderCapabilities.current().forEach { capability ->
                 row {
                     val mark = if (capability.available) "✓" else "—"
                     label("$mark  ${capability.displayName}")
                     if (!capability.available) {
-                        comment("Unavailable: ${capability.requirement}")
+                        comment(RepoLensBundle.message("settings.capabilities.unavailable", capability.requirement))
                     }
                 }
             }
         }
-        group("Checks") {
+        group(RepoLensBundle.message("settings.group.checks")) {
             ProjectAnalyzers.all(project).forEach { analyzer ->
                 row {
                     checkBox("${analyzer.checkName} (${analyzer.id})")
@@ -52,57 +50,56 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
                         )
                 }
             }
-            row("TODO markers:") {
+            row(RepoLensBundle.message("settings.todo.markers")) {
                 textField()
                     .columns(30)
                     .bindText(
                         getter = { state.todoMarkers.joinToString(", ") },
                         setter = { text -> state.todoMarkers = parseMarkers(text) },
                     )
-                    .comment("Comma separated. Markers are matched as whole words, case-insensitively.")
+                    .comment(RepoLensBundle.message("settings.todo.markers.comment"))
             }
         }
-        group("Thresholds") {
-            row("Large file threshold (lines):") {
+        group(RepoLensBundle.message("settings.group.thresholds")) {
+            row(RepoLensBundle.message("settings.threshold.large.file")) {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeFileLineThreshold)
             }
-            row("Large type threshold (body lines):") {
+            row(RepoLensBundle.message("settings.threshold.large.type")) {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeClassLineThreshold)
             }
-            row("Large function / method threshold (body lines):") {
+            row(RepoLensBundle.message("settings.threshold.large.function")) {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeMethodLineThreshold)
             }
-            row("Parameter count threshold:") {
+            row(RepoLensBundle.message("settings.threshold.parameters")) {
                 intTextField(range = 1..1_000).bindIntText(state::parameterCountThreshold)
             }
-            row("Nesting depth threshold:") {
+            row(RepoLensBundle.message("settings.threshold.nesting")) {
                 intTextField(range = 1..100).bindIntText(state::nestingDepthThreshold)
             }
-            row("Large diff threshold (changed lines):") {
+            row(RepoLensBundle.message("settings.threshold.large.diff")) {
                 intTextField(range = 1..1_000_000).bindIntText(state::largeDiffChangedLineThreshold)
             }
         }
-        group("Git") {
-            row("Base branch (Branch Diff):") {
+        group(RepoLensBundle.message("settings.group.git")) {
+            row(RepoLensBundle.message("settings.git.base.branch")) {
                 textField()
                     .columns(24)
                     .bindText(state::baseBranch)
-                    .comment("Blank auto-detects origin/main, origin/master, main, master.")
+                    .comment(RepoLensBundle.message("settings.git.base.branch.comment"))
             }
-            row("History window (days):") {
+            row(RepoLensBundle.message("settings.git.history.days")) {
                 intTextField(range = 1..3650).bindIntText(state::gitHistoryDays)
-                    .comment("Bounds the per-run history query used for change frequency and author count.")
+                    .comment(RepoLensBundle.message("settings.git.history.days.comment"))
             }
-            row("Long-lived TODO age (days):") {
+            row(RepoLensBundle.message("settings.git.long.lived.days")) {
                 intTextField(range = 1..3650).bindIntText(state::longLivedTodoDays)
             }
-            row("Hotspot minimum commits:") {
+            row(RepoLensBundle.message("settings.git.hotspot.commits")) {
                 intTextField(range = 1..10_000).bindIntText(state::hotspotMinCommits)
-                    .comment("A file qualifies as a hotspot when it changed at least this often " +
-                        "within the history window and carries structural findings.")
+                    .comment(RepoLensBundle.message("settings.git.hotspot.commits.comment"))
             }
         }
-        group("Exclusions") {
+        group(RepoLensBundle.message("settings.group.exclusions")) {
             row {
                 textArea()
                     .rows(8)
@@ -111,14 +108,10 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
                         getter = { state.excludePatterns.joinToString("\n") },
                         setter = { text -> state.excludePatterns = parsePatterns(text) },
                     )
-                    .comment(
-                        "One glob per line, matched against project-relative paths. " +
-                            "Use a double star to cross directories, for example **/.venv/**. " +
-                            "Patterns that fail to compile are ignored.",
-                    )
+                    .comment(RepoLensBundle.message("settings.exclusions.comment"))
             }.resizableRow()
         }
-        group("Suppression") {
+        group(RepoLensBundle.message("settings.group.suppression")) {
             row {
                 textArea()
                     .rows(5)
@@ -127,24 +120,20 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
                         getter = { state.suppressRuleLines.joinToString("\n") },
                         setter = { text -> state.suppressRuleLines = parsePatterns(text) },
                     )
-                    .comment(
-                        "One rule per line: check-id | path-glob | symbol-glob. " +
-                            "Empty segments do not restrict; lines starting with # are comments. " +
-                            "Example: RL-M001 | **/*_test.go suppresses Large Function / Method in Go tests.",
-                    )
+                    .comment(RepoLensBundle.message("settings.suppression.comment"))
             }.resizableRow()
             row {
-                comment("Individually ignored findings: ${state.ignoredFindingIds.size}")
-                button("Clear Ignored Findings") {
+                comment(RepoLensBundle.message("settings.suppression.ignored.count", state.ignoredFindingIds.size))
+                button(RepoLensBundle.message("settings.suppression.clear")) {
                     state.ignoredFindingIds.clear()
                 }
             }
         }
-        group("Copy") {
-            row("Context lines:") {
+        group(RepoLensBundle.message("settings.group.copy")) {
+            row(RepoLensBundle.message("settings.copy.context.lines")) {
                 intTextField(range = 0..100).bindIntText(state::copyContextLines)
             }
-            row("Max code lines:") {
+            row(RepoLensBundle.message("settings.copy.max.lines")) {
                 intTextField(range = 1..1_000).bindIntText(state::copyMaxCodeLines)
             }
         }
