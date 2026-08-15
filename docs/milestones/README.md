@@ -56,6 +56,7 @@ vX.Y はテーマ別マイルストーン名である。両者は 1:1 に対応�
 | 0.1.0 | Core review workflow | v0.1 |
 | 0.2.0 | Language Providers（Go / JS / TS）+ capability 表示 | v0.4 |
 | 0.3.0 | Structural analysis（Ignore / Suppress、Circular Dependency、Unused Candidate） | v0.2 |
+| 0.4.0 | Git-aware review（Branch Diff、Large Diff、Git history、Long-lived TODO、Hotspot） | v0.3 |
 
 以後もリリースごとに minor を上げ、Marketplace 公開判断（v1.0 マイルストーン）
 の時点で 1.0.0 とする。
