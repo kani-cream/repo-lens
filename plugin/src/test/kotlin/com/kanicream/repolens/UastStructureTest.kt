@@ -210,6 +210,42 @@ class UastStructureTest : BasePlatformTestCase() {
         assertEquals(3, deep.maxNestingDepth)
     }
 
+    fun `test package and imports are extracted with lines`() {
+        val structure = structureOf(
+            "src/app/a/Service.java",
+            """
+            package app.a;
+
+            import java.util.List;
+            import app.b.Helper;
+
+            public class Service {}
+            """.trimIndent(),
+        )
+
+        assertEquals("app.a", structure!!.packageName)
+        assertEquals(
+            listOf("java.util.List" to 3, "app.b.Helper" to 4),
+            structure.imports.map { it.target to it.line },
+        )
+    }
+
+    fun `test kotlin package and imports are extracted`() {
+        val structure = structureOf(
+            "src/Feature.kt",
+            """
+            package app.feature
+
+            import app.core.Engine
+
+            class Feature(private val engine: Engine)
+            """.trimIndent(),
+        )
+
+        assertEquals("app.feature", structure!!.packageName)
+        assertEquals(listOf("app.core.Engine"), structure.imports.map { it.target })
+    }
+
     fun `test files without a uast language have no structure`() {
         assertNull(structureOf("docs/readme.txt", "just text\n"))
     }

@@ -14,6 +14,7 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
+import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.clipboard.CopyStyle
 import com.kanicream.repolens.clipboard.FindingCopyService
@@ -386,6 +387,12 @@ internal class RepoLensPanel(private val project: Project) :
             appendLine()
             appendLine()
             append(text)
+        }
+        finding.metadata[CircularDependencyAnalyzer.METADATA_EVIDENCE]?.let { evidence ->
+            appendLine()
+            appendLine()
+            appendLine("Cycle edges:")
+            append(evidence)
         }
     }
 

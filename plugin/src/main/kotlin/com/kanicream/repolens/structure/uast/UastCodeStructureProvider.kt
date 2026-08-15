@@ -12,6 +12,7 @@ import com.kanicream.repolens.structure.CodeDeclaration
 import com.kanicream.repolens.structure.CodeStructure
 import com.kanicream.repolens.structure.CodeStructureProvider
 import com.kanicream.repolens.structure.DeclarationKind
+import com.kanicream.repolens.structure.PackageImport
 import org.jetbrains.uast.UClass
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.UMethod
@@ -71,7 +72,15 @@ internal class UastCodeStructureProvider : CodeStructureProvider {
                 }
             },
         )
-        return CodeStructure(declarations)
+        return CodeStructure(
+            declarations = declarations,
+            packageName = uFile.packageName.takeIf { it.isNotEmpty() },
+            imports = uFile.imports.mapNotNull { import ->
+                val target = import.importReference?.asSourceString() ?: return@mapNotNull null
+                val offset = import.sourcePsi?.textRange?.startOffset ?: return@mapNotNull null
+                lineOf(offset, document)?.let { PackageImport(target, it) }
+            },
+        )
     }
 
     /**

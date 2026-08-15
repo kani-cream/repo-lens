@@ -6,6 +6,8 @@ import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
+import com.kanicream.repolens.analysis.DefaultAnalyzers
+import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
 import com.kanicream.repolens.analysis.tier0.LargeFileAnalyzer
@@ -40,16 +42,8 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         settings: SettingsSnapshot = SettingsSnapshot(),
         scopeType: AnalysisScopeType = AnalysisScopeType.PROJECT,
     ): AnalysisResult {
-        val orchestrator = AnalysisOrchestrator(
-            AnalyzerRegistry(
-                listOf(
-                    LargeFileAnalyzer(),
-                    TodoMarkerAnalyzer(),
-                    LargeClassAnalyzer(),
-                    LargeMethodAnalyzer(),
-                ),
-            ),
-        )
+        // The production catalog, so this test cannot drift from what actually runs.
+        val orchestrator = AnalysisOrchestrator(AnalyzerRegistry(DefaultAnalyzers.create()))
         val request = AnalysisRequest(scopeType, settings)
         // The suspending readAction contract forbids the EDT (where light tests run),
         // so the analysis executes on a pooled thread like it does in production.
@@ -234,6 +228,30 @@ class RepoLensWorkflowTest : BasePlatformTestCase() {
         )
 
         assertEmpty(result.findings)
+    }
+
+    fun `test package cycle is detected end to end with navigable anchor`() {
+        myFixture.addFileToProject(
+            "src/app/a/A.java",
+            "package app.a;\n\nimport app.b.B;\n\npublic class A { B b; }\n",
+        )
+        myFixture.addFileToProject(
+            "src/app/b/B.java",
+            "package app.b;\n\nimport app.a.A;\n\npublic class B { A a; }\n",
+        )
+
+        val result = analyze(ResolvedScope.WholeProject)
+
+        val cycle = result.findings.single { it.analyzerId == CircularDependencyAnalyzer.ID }
+        assertEquals("RL-D001:app.a,app.b", cycle.id)
+        assertEquals(
+            "app.a → app.b → app.a",
+            cycle.metadata[CircularDependencyAnalyzer.METADATA_CYCLE_PATH],
+        )
+        // The anchor is the import line in the first package of the path.
+        assertTrue(cycle.location.filePath.endsWith("A.java"))
+        assertEquals(3, cycle.location.startLine)
+        assertTrue(FindingNavigator.getInstance(project).navigate(cycle))
     }
 
     fun `test navigation opens the finding file in an editor`() {

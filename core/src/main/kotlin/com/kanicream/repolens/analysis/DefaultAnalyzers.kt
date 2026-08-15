@@ -1,5 +1,6 @@
 package com.kanicream.repolens.analysis
 
+import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.structure.DeepNestingAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeClassAnalyzer
 import com.kanicream.repolens.analysis.structure.LargeMethodAnalyzer
@@ -20,5 +21,6 @@ object DefaultAnalyzers {
         LargeMethodAnalyzer(),
         ParameterCountAnalyzer(),
         DeepNestingAnalyzer(),
+        CircularDependencyAnalyzer(),
     )
 }

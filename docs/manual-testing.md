@@ -50,6 +50,11 @@ Project スコープでも検出はされるが、`docs/` の設計書自体が�
 | TODO / FIXME | `samples/todo_markers_sample.md` | *(空欄)* | *(空欄)* ×2 |
 | TODO / FIXME | `samples/kotlin/KotlinSamples.kt` | *(空欄)* | *(空欄)* ×2 |
 
+| Circular Dependency | `samples/java/cycle/alpha/Alpha.java` | *(空欄)* | 2 |
+
+Circular Dependency は Detail に `Cycle edges:`（各辺の file:line）、Copy for AI に
+`### Dependency cycle` セクションが出る。ダブルクリックで import 行へ飛ぶ。
+
 **Go プラグインがある場合のみ**（Settings → Plugins で Go をインストール。Ultimate ライセンスが必要）:
 
 | Check | File | Symbol | Value / Threshold |

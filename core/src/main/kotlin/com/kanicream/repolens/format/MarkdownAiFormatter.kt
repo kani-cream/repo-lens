@@ -1,5 +1,6 @@
 package com.kanicream.repolens.format
 
+import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.model.Finding
 
 /** One finding plus its optional code excerpt, shared by all copy formats. */
@@ -70,6 +71,12 @@ object MarkdownAiFormatter {
         appendLine()
         appendLine(finding.message)
         appendLine()
+        finding.metadata[CircularDependencyAnalyzer.METADATA_EVIDENCE]?.let { evidence ->
+            appendLine("### Dependency cycle")
+            appendLine()
+            evidence.lines().forEach { appendLine("- $it") }
+            appendLine()
+        }
         item.snippet?.let { appendSnippet(finding.location.filePath, it) }
     }
 
