@@ -4,14 +4,31 @@
     <vendor>kani-cream</vendor>
 
     <description><![CDATA[
-        <p>Repo Lens is a code review navigator. It collects review candidates
-        (large files, TODO / FIXME markers, and more to come) into a single tool window,
-        lets you jump from a finding straight to the code, and copies selected findings
-        as structured Markdown that you can paste into any AI chat or review tool.</p>
+        <p>A code review navigator. Repo Lens collects review candidates into one tool
+        window, jumps from any finding straight to the code, and copies findings as
+        structured Markdown you can paste into any AI chat or review thread.</p>
 
-        <p>Repo Lens never calls an AI API, stores no API keys, requires no external
-        server, and never sends your source code anywhere. The clipboard is written only
-        on an explicit Copy action.</p>
+        <p><b>Checks</b>: large files, types and functions; too many parameters; deep
+        nesting; package dependency cycles; unused public API candidates; oversized
+        diffs; long-lived TODO / FIXME markers; hotspots (change frequency combined
+        with structural findings, with a fully explainable score).</p>
+
+        <p><b>Scopes</b>: Project, Current File, Selected Files, Module, Local Changes,
+        and Branch Diff (merge-base against your base branch, uncommitted and untracked
+        work included).</p>
+
+        <p><b>Languages</b>: universal checks run on any text file; structure analysis
+        covers Java, Kotlin, Go, and JavaScript / TypeScript / JSX / TSX through
+        optional providers that load only when the matching language plugin is present.
+        Git-based evidence (change frequency, author counts, marker age) appears when
+        the Git plugin is available.</p>
+
+        <p><b>Noise control</b>: filters, per-finding ignore, pattern-based suppress
+        rules, and exclusion globs. Findings are evidence with measured values and
+        thresholds, never verdicts.</p>
+
+        <p>Repo Lens calls no AI API, stores no keys, requires no server, sends nothing
+        anywhere, and writes the clipboard only on an explicit Copy action.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
