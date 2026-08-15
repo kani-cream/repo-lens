@@ -7,6 +7,7 @@ allprojects {
     group = "com.kanicream.repolens"
     // Release ordinal (SemVer-style). Independent of docs/milestones vX.Y, which are
     // theme names - the pull-forward broke any 1:1 mapping (see milestones/README.md).
-    // 0.1.0 = core workflow; 0.2.0 = language providers + capability view + hardening.
-    version = "0.2.0"
+    // 0.1.0 = core workflow; 0.2.0 = language providers + capability view + hardening;
+    // 0.3.0 = structural analysis (ignore/suppress, circular dependency, unused candidate).
+    version = "0.3.0"
 }
