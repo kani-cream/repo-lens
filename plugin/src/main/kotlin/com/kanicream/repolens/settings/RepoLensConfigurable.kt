@@ -11,6 +11,7 @@ import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.kanicream.repolens.analysis.DefaultAnalyzers
+import com.kanicream.repolens.structure.ProviderCapabilities
 
 /** Project settings UI: per-check toggles, thresholds, exclusions, and copy limits. */
 class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
@@ -18,6 +19,23 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
     private val state: RepoLensSettings.State = RepoLensSettings.getInstance(project).getState()
 
     override fun createPanel(): DialogPanel = panel {
+        group("Language Capabilities") {
+            row {
+                comment(
+                    "Universal checks (Large File, TODO / FIXME) run for every text " +
+                        "language. Structure checks need a language provider:",
+                )
+            }
+            ProviderCapabilities.current().forEach { capability ->
+                row {
+                    val mark = if (capability.available) "✓" else "—"
+                    label("$mark  ${capability.displayName}")
+                    if (!capability.available) {
+                        comment("Unavailable: ${capability.requirement}")
+                    }
+                }
+            }
+        }
         group("Checks") {
             DefaultAnalyzers.create().forEach { analyzer ->
                 row {

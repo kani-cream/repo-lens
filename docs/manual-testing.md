@@ -120,11 +120,17 @@ Settings → Tools → Repo Lens:
    サンプル中の小さいメソッドも検出される。戻すと消える
 3. **Exclusions** — `**/samples/**` を 1 行追加して再 Analyze →
    samples の Findings が消える（明示選択した場合を除く）。行を削除して戻す
-4. **永続化** — サンドボックスを閉じて再起動しても設定が残っている
+4. **Language Capabilities** — Settings → Tools → Repo Lens の先頭に
+   Provider 一覧が表示される。Java / Kotlin、Go、JavaScript / TypeScript が
+   すべて ✓ であること（Go プラグインを無効化して IDE を再起動すると
+   Go だけ「—」+ 理由表示になる。これが Provider unavailable の正常表示）
+5. **永続化** — サンドボックスを閉じて再起動しても設定が残っている
    （プロジェクトの `.idea/repoLens.xml` に保存される）
 
 ## 6. トラブルシューティング
 
-- サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1/log/idea.log`
+- サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log`
+- 解析の診断ログ: 同ログに `RepoLensAnalysisService - analysis scope=... RL-F001=12ms ...`
+  の形式で Analyzer 単位の所要時間が出る（ソース本文は出力しない）
 - 解析が返らない場合はステータスラベルとログの ERROR / SEVERE を確認
 - 表示が古い場合はサンドボックスの再起動（ビルドの反映には再起動が必要）

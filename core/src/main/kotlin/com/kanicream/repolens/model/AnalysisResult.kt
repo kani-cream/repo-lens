@@ -13,6 +13,8 @@ data class AnalyzerFailure(
 data class AnalysisResult(
     val findings: List<Finding>,
     val failures: List<AnalyzerFailure> = emptyList(),
+    /** Wall-clock per executed analyzer, for the diagnostics log (design 15.1). */
+    val elapsedByAnalyzer: Map<String, Long> = emptyMap(),
 ) {
     fun countBySeverity(severity: Severity): Int = findings.count { it.severity == severity }
 }

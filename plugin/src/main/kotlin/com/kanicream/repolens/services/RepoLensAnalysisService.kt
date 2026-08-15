@@ -63,6 +63,7 @@ class RepoLensAnalysisService(
                         val result = withBackgroundProgress(project, progressTitle(scopeType)) {
                             orchestrator.analyze(context)
                         }
+                        logDiagnostics(scopeType, result)
                         onEdt { publish { it.analysisFinished(scopeType, result) } }
                     } catch (e: CancellationException) {
                         onEdt { publish { it.analysisCancelled() } }
@@ -78,6 +79,15 @@ class RepoLensAnalysisService(
 
     fun stop() {
         currentJob?.cancel()
+    }
+
+    /** Analyzer IDs, counts and timings only - never file content (design 15.1). */
+    private fun logDiagnostics(scopeType: AnalysisScopeType, result: com.kanicream.repolens.model.AnalysisResult) {
+        val timings = result.elapsedByAnalyzer.entries.joinToString(" ") { "${it.key}=${it.value}ms" }
+        LOG.info(
+            "analysis scope=${scopeType.name} findings=${result.findings.size} " +
+                "failures=${result.failures.size} $timings",
+        )
     }
 
     private fun progressTitle(scopeType: AnalysisScopeType): String =

@@ -149,6 +149,24 @@ class AnalysisOrchestratorTest {
     }
 
     @Test
+    fun `elapsed time is recorded per executed analyzer including failed ones`() = runTest {
+        val orchestrator = AnalysisOrchestrator(
+            AnalyzerRegistry(
+                listOf(
+                    stubAnalyzer("A-OK") { listOf(finding("A-OK", "a.kt", 1)) },
+                    stubAnalyzer("A-BROKEN") { throw IllegalStateException("boom") },
+                    stubAnalyzer("A-SKIPPED", supported = false) { emptyList() },
+                ),
+            ),
+        )
+
+        val result = orchestrator.analyze(context())
+
+        assertEquals(setOf("A-OK", "A-BROKEN"), result.elapsedByAnalyzer.keys)
+        assertTrue(result.elapsedByAnalyzer.values.all { it >= 0 })
+    }
+
+    @Test
     fun `registry rejects duplicate analyzer ids`() {
         val analyzer = stubAnalyzer("A-1") { emptyList() }
         val duplicate = stubAnalyzer("A-1") { emptyList() }

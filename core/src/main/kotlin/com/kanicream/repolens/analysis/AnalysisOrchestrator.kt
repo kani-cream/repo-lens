@@ -20,9 +20,11 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
     suspend fun analyze(context: AnalysisContext): AnalysisResult {
         val findingsById = LinkedHashMap<String, Finding>()
         val failures = mutableListOf<AnalyzerFailure>()
+        val elapsed = LinkedHashMap<String, Long>()
 
         for (analyzer in registry.activeFor(context)) {
             coroutineContext.ensureActive()
+            val startedAt = System.currentTimeMillis()
             try {
                 for (finding in analyzer.analyze(context)) {
                     findingsById.putIfAbsent(finding.id, finding)
@@ -31,6 +33,8 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
                 throw e
             } catch (e: Exception) {
                 failures += AnalyzerFailure(analyzer.id, e.javaClass.simpleName)
+            } finally {
+                elapsed[analyzer.id] = System.currentTimeMillis() - startedAt
             }
         }
 
@@ -40,6 +44,6 @@ class AnalysisOrchestrator(private val registry: AnalyzerRegistry) {
                 .thenBy { it.location.startLine }
                 .thenBy { it.analyzerId },
         )
-        return AnalysisResult(sorted, failures)
+        return AnalysisResult(sorted, failures, elapsed)
     }
 }
