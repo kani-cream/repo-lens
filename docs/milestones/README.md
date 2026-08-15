@@ -26,6 +26,22 @@
 - Repo Lens 本体には単一の「対応言語」制限を設けず、Analyzer ごとに利用可能な capability を判定する。
 - Language Provider がない言語でも、Large File / TODO-FIXME / Git 系など言語非依存 Analyzer は可能な範囲で利用できる。
 
+## 実施順序の変更（2026-08-15）
+
+v0.1 完了時点の判断として、**v0.4 の Go Provider を v0.2 / v0.3 より先に実施する**。
+
+理由:
+
+- 実際に利用する Repository が Go / TypeScript 中心であり、構造解析4種が
+  Java / Kotlin 限定のままでは v0.1 の Exit review（実運用評価）が成立しない。
+- v0.1 で `CodeStructureProvider` 拡張ポイントと optional dependency 構造を
+  先行導入済みであり、Provider SPI の言語非依存性の検証（v0.4 の本来の目的）を
+  今行うことが、v0.2 以降の Analyzer 設計にも先に制約を与えられる。
+
+本ロードマップの表は本来の計画として維持し、進行状況は各マイルストーン文書の
+完了記録で管理する。この前倒しは README の「次バージョンの機能を先行実装して
+もよい」の範囲内であり、v0.2 / v0.3 の必須条件を覆い隠すものではない。
+
 ## マイルストーン運用
 
 各バージョンは、文書内の Acceptance Criteria をすべて満たした時点で完了とする。次バージョンの機能を先行実装してもよいが、未完了の必須条件を後続機能で覆い隠さない。
