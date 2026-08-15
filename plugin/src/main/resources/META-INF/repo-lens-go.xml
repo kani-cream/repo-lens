@@ -1,0 +1,11 @@
+<idea-plugin>
+    <!--
+      Loaded only when the Go plugin is available. Repo Lens Core and every other
+      analyzer work without it; in IDEs without Go the structure checks simply have no
+      Go structure to look at - Provider unavailable is a normal state (design 4.6).
+    -->
+    <extensions defaultExtensionNs="com.kanicream.repolens">
+        <codeStructureProvider
+            implementation="com.kanicream.repolens.structure.go.GoCodeStructureProvider"/>
+    </extensions>
+</idea-plugin>

@@ -22,13 +22,19 @@ dependencies {
 
     intellijPlatform {
         // Since 2025.3 (253) IntelliJ IDEA ships as a single unified distribution;
-        // the separate Community (IC) artifact is no longer published.
-        intellijIdea("2026.1")
+        // the separate Community (IC) artifact is no longer published. Pinned to the
+        // 2026.1.5 patch (build 261.27258): current marketplace plugins for the 261
+        // line, the Go plugin included, require a newer build than the initial
+        // 2026.1 release provides. The baseline stays 2026.1 / since-build 261.
+        intellijIdea("2026.1.5")
         // UAST ships inside the Java plugin and its types extend Java PSI, so the Java
         // plugin is needed to compile the structure provider. At runtime it stays an
         // optional dependency (see repo-lens-uast.xml): Repo Lens Core must still load
         // in IDEs without Java.
         bundledPlugin("com.intellij.java")
+        // Go PSI for the Go structure provider. Marketplace plugin (not bundled);
+        // at runtime it stays an optional dependency like the UAST provider.
+        plugin("org.jetbrains.plugins.go", "261.26222.22")
         // Test scope only: Repo Lens references no Kotlin API, and the bundled Kotlin
         // plugin carries newer Kotlin metadata than this module compiles against, so it
         // must not reach the compile classpath. The tests need it loaded to prove that
@@ -61,7 +67,7 @@ tasks.test {
     // need: this plugin plus Java, which supplies UAST for the structure provider.
     systemProperty(
         "idea.load.plugins.id",
-        "com.kanicream.repolens,com.intellij.java,org.jetbrains.kotlin",
+        "com.kanicream.repolens,com.intellij.java,org.jetbrains.kotlin,org.jetbrains.plugins.go",
     )
 }
 

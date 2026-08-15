@@ -37,6 +37,7 @@ class PathExclusions(patterns: List<String>) {
             "**/.git/**",
             "**/.idea/**",
             "**/.gradle/**",
+            "**/.intellijPlatform/**",
             "**/build/**",
             "**/out/**",
             "**/target/**",

@@ -29,6 +29,8 @@ class PathExclusionsTest {
         // Regression: `**' + '/x` must also match a top-level `x`.
         assertTrue(defaults.isExcluded(".git/config"))
         assertTrue(defaults.isExcluded(".idea/workspace.xml"))
+        // A plugin-dev sandbox contains an entire IDE; scanning it drowns real findings.
+        assertTrue(defaults.isExcluded(".intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log"))
         assertTrue(defaults.isExcluded("build/reports/index.html"))
     }
 

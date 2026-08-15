@@ -19,6 +19,11 @@ export JAVA_HOME="$HOME/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Hom
 
 起動したら `~/IdeaProjects/repo-lens` 自体をプロジェクトとして開く。
 
+Go の構造解析を確認する場合は、サンドボックス内で一度だけ JetBrains Account に
+ログインし（Ultimate が適用される）、Settings → Plugins から Go を入れて再起動する。
+ログイン・プラグインとも `.intellijPlatform/sandbox` の設定に保持されるため、
+サンドボックスを立ち上げ直しても再設定は不要。
+
 ## 2. サンプルでの検出確認（Selected Files スコープ）
 
 **前提: 閾値が既定値であること。** 設定はプロジェクト単位で永続化されるため、
@@ -44,6 +49,18 @@ Project スコープでも検出はされるが、`docs/` の設計書自体が�
 | Deep Nesting | `samples/kotlin/KotlinSamples.kt` | `KotlinSamples.deep()` | 6 / 5 |
 | TODO / FIXME | `samples/todo_markers_sample.md` | *(空欄)* | *(空欄)* ×2 |
 | TODO / FIXME | `samples/kotlin/KotlinSamples.kt` | *(空欄)* | *(空欄)* ×2 |
+
+**Go プラグインがある場合のみ**（Settings → Plugins で Go をインストール。Ultimate ライセンスが必要）:
+
+| Check | File | Symbol | Value / Threshold |
+|---|---|---|---|
+| Too Many Parameters | `samples/go/go_samples.go` | `Configure()` | 9 / 7 |
+| Deep Nesting | `samples/go/go_samples.go` | `Deep()` | 6 / 5 |
+| TODO / FIXME | `samples/go/go_samples.go` | *(空欄)* | *(空欄)* ×1 |
+
+Go プラグインが無い場合は上記 3 行のうち TODO の 1 件だけが出る（構造解析は
+黙ってスキップされる）。これ自体が optional dependency の確認になる。
+`Narrow()`（2 パラメータ）は Go プラグインの有無に関わらず出ない。
 
 出てはいけないもの（境界値の確認）:
 

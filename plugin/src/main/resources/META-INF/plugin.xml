@@ -22,6 +22,8 @@
     <!-- Structure analysis needs UAST, which ships inside the Java plugin. Optional so
          Repo Lens Core still loads in IDEs without Java. -->
     <depends optional="true" config-file="repo-lens-uast.xml">com.intellij.modules.java</depends>
+    <!-- Go structure analysis; optional for the same reason. -->
+    <depends optional="true" config-file="repo-lens-go.xml">org.jetbrains.plugins.go</depends>
 
     <extensionPoints>
         <extensionPoint name="codeStructureProvider" interface="com.kanicream.repolens.structure.CodeStructureProvider"
