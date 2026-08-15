@@ -127,7 +127,22 @@ Settings → Tools → Repo Lens:
 5. **永続化** — サンドボックスを閉じて再起動しても設定が残っている
    （プロジェクトの `.idea/repoLens.xml` に保存される）
 
-## 6. トラブルシューティング
+## 6. Ignore / Suppress の確認
+
+1. **Ignore** — 一覧の行を右クリック → **Ignore Finding** → 行が消え、
+   ステータスに `N hidden (N ignored)` が出る。ルール抑制分は
+   `M by rules` として別に数えられる
+2. **Show ignored** — フィルタ行のチェックを入れると ignored の Finding が
+   再表示され、Detail 先頭に `[Ignored by you]` と出る。右クリック →
+   **Stop Ignoring** で通常表示に戻る
+3. **Suppress rule** — Settings → Repo Lens → Suppression に
+   `RL-M001 | **/*_test.go` を追加 → Go テストの Large Function / Method が
+   一覧から消える（Show ignored で確認可能。Detail は `[Hidden by a suppress rule]`）
+4. **永続化** — サンドボックス再起動後も ignore / rule が残っている
+5. **再解析安定性** — 再 Analyze しても ignored の Finding は ignored のまま
+   （stable ID によるため。対象行が編集で移動した場合は新 ID になり再表示される）
+
+## 7. トラブルシューティング
 
 - サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log`
 - 解析の診断ログ: 同ログに `RepoLensAnalysisService - analysis scope=... RL-F001=12ms ...`

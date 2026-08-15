@@ -95,6 +95,28 @@ class RepoLensConfigurable(project: Project) : BoundConfigurable("Repo Lens") {
                     )
             }.resizableRow()
         }
+        group("Suppression") {
+            row {
+                textArea()
+                    .rows(5)
+                    .align(AlignX.FILL)
+                    .bindText(
+                        getter = { state.suppressRuleLines.joinToString("\n") },
+                        setter = { text -> state.suppressRuleLines = parsePatterns(text) },
+                    )
+                    .comment(
+                        "One rule per line: check-id | path-glob | symbol-glob. " +
+                            "Empty segments do not restrict; lines starting with # are comments. " +
+                            "Example: RL-M001 | **/*_test.go suppresses Large Function / Method in Go tests.",
+                    )
+            }.resizableRow()
+            row {
+                comment("Individually ignored findings: ${state.ignoredFindingIds.size}")
+                button("Clear Ignored Findings") {
+                    state.ignoredFindingIds.clear()
+                }
+            }
+        }
         group("Copy") {
             row("Context lines:") {
                 intTextField(range = 0..100).bindIntText(state::copyContextLines)

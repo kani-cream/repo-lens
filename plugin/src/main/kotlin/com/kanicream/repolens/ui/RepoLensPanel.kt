@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.SearchTextField
+import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -25,6 +26,9 @@ import com.kanicream.repolens.model.Severity
 import com.kanicream.repolens.navigation.FindingNavigator
 import com.kanicream.repolens.services.RepoLensAnalysisListener
 import com.kanicream.repolens.services.RepoLensAnalysisService
+import com.kanicream.repolens.settings.RepoLensSettings
+import com.kanicream.repolens.suppression.SuppressionKind
+import com.kanicream.repolens.suppression.SuppressionPolicy
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.GridLayout
@@ -35,7 +39,9 @@ import java.awt.event.MouseEvent
 import javax.swing.AbstractAction
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JMenuItem
 import javax.swing.JPanel
+import javax.swing.JPopupMenu
 import javax.swing.KeyStroke
 import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
@@ -56,6 +62,7 @@ internal class RepoLensPanel(private val project: Project) :
     private val searchField = SearchTextField()
     private val severityCombo = ComboBox(SEVERITY_CHOICES.toTypedArray())
     private val checkCombo = ComboBox(arrayOf(ALL_CHECKS))
+    private val showIgnoredCheckBox = JBCheckBox("Show ignored")
     private val analyzeButton = JButton("Analyze")
     private val stopButton = JButton("Stop")
     private val copyButtons: Map<CopyStyle, JButton> =
@@ -109,6 +116,7 @@ internal class RepoLensPanel(private val project: Project) :
             add(severityCombo)
             add(JBLabel("Check:"))
             add(checkCombo)
+            add(showIgnoredCheckBox)
             add(statusLabel)
         }
         val toolbar = JPanel(GridLayout(2, 1)).apply {
@@ -140,6 +148,8 @@ internal class RepoLensPanel(private val project: Project) :
         })
         severityCombo.addActionListener { applyFilters() }
         checkCombo.addActionListener { applyFilters() }
+        showIgnoredCheckBox.addActionListener { applyFilters() }
+        table.componentPopupMenu = buildTablePopup()
 
         table.selectionModel.addListSelectionListener { event ->
             if (!event.valueIsAdjusting) onSelectionChanged()
@@ -147,6 +157,19 @@ internal class RepoLensPanel(private val project: Project) :
         table.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 if (e.clickCount == 2) navigateToSelection()
+            }
+
+            override fun mousePressed(e: MouseEvent) = selectRowForPopup(e)
+
+            override fun mouseReleased(e: MouseEvent) = selectRowForPopup(e)
+
+            /** Right-clicking a row outside the selection targets that row, as everywhere else in the IDE. */
+            private fun selectRowForPopup(e: MouseEvent) {
+                if (!e.isPopupTrigger) return
+                val row = table.rowAtPoint(e.point)
+                if (row >= 0 && row !in table.selectedRows) {
+                    table.setRowSelectionInterval(row, row)
+                }
             }
         })
         table.getInputMap(JComponent.WHEN_FOCUSED)
@@ -212,22 +235,81 @@ internal class RepoLensPanel(private val project: Project) :
 
     private fun applyFilters() {
         if (rebuildingFilters) return
+        val policy = suppressionPolicy()
+        val (active, suppressed) = policy.partition(allFindings)
+        val base = if (showIgnoredCheckBox.isSelected) allFindings else active
         val filter = currentFilter()
-        val visible = filter.apply(allFindings)
+        val visible = filter.apply(base)
         tableModel.setFindings(visible)
-        statusLabel.text = statusText(filter, visible)
+        val ignoredCount = suppressed.count { policy.suppressionOf(it) == SuppressionKind.IGNORED }
+        statusLabel.text =
+            statusText(filter, visible, base.size, ignoredCount, suppressed.size - ignoredCount)
         onSelectionChanged()
     }
 
-    private fun statusText(filter: FindingFilter, visible: List<Finding>): String {
-        val shown = if (filter.isActive && visible.size != allFindings.size) {
-            "Showing ${visible.size} of ${allFindings.size}"
+    private fun suppressionPolicy(): SuppressionPolicy =
+        RepoLensSettings.getInstance(project).suppressionPolicy()
+
+    private fun statusText(
+        filter: FindingFilter,
+        visible: List<Finding>,
+        baseCount: Int,
+        ignoredCount: Int,
+        ruleSuppressedCount: Int,
+    ): String {
+        val shown = if (filter.isActive && visible.size != baseCount) {
+            "Showing ${visible.size} of $baseCount"
         } else {
-            "Total ${allFindings.size}"
+            "Total $baseCount"
         }
         val counts = "$shown | Warning ${visible.count { it.severity == Severity.WARNING }} | " +
             "Info ${visible.count { it.severity == Severity.INFO }}"
-        return if (failedAnalyzerCount == 0) counts else "$counts | $failedAnalyzerCount analyzer(s) failed"
+        // Manual ignores and rule hits are different tools; lumping them into one number
+        // reads as "why are there 34?" the first time a broad rule matches.
+        val hiddenParts = buildList {
+            if (ignoredCount > 0) add("$ignoredCount ignored")
+            if (ruleSuppressedCount > 0) add("$ruleSuppressedCount by rules")
+        }
+        val withHidden = if (hiddenParts.isEmpty()) {
+            counts
+        } else {
+            "$counts | ${(ignoredCount + ruleSuppressedCount)} hidden (${hiddenParts.joinToString(", ")})"
+        }
+        return if (failedAnalyzerCount == 0) {
+            withHidden
+        } else {
+            "$withHidden | $failedAnalyzerCount analyzer(s) failed"
+        }
+    }
+
+    /** Ignore / unignore for the selected findings; suppressed state is view-side only. */
+    private fun buildTablePopup(): JPopupMenu {
+        val menu = JPopupMenu()
+        val ignoreItem = JMenuItem()
+        ignoreItem.addActionListener {
+            val settings = RepoLensSettings.getInstance(project)
+            val selected = selectedFindings()
+            val anyActive = selected.any { !settings.isFindingIgnored(it.id) }
+            selected.forEach { settings.setFindingIgnored(it.id, anyActive) }
+            applyFilters()
+        }
+        menu.addPopupMenuListener(object : javax.swing.event.PopupMenuListener {
+            override fun popupMenuWillBecomeVisible(e: javax.swing.event.PopupMenuEvent) {
+                val settings = RepoLensSettings.getInstance(project)
+                val selected = selectedFindings()
+                ignoreItem.isEnabled = selected.isNotEmpty()
+                ignoreItem.text = if (selected.any { !settings.isFindingIgnored(it.id) }) {
+                    "Ignore Finding"
+                } else {
+                    "Stop Ignoring"
+                }
+            }
+
+            override fun popupMenuWillBecomeInvisible(e: javax.swing.event.PopupMenuEvent) = Unit
+            override fun popupMenuCanceled(e: javax.swing.event.PopupMenuEvent) = Unit
+        })
+        menu.add(ignoreItem)
+        return menu
     }
 
     override fun analysisCancelled() {
@@ -283,6 +365,11 @@ internal class RepoLensPanel(private val project: Project) :
             .mapNotNull(tableModel::findingAt)
 
     private fun detailText(finding: Finding): String = buildString {
+        when (suppressionPolicy().suppressionOf(finding)) {
+            SuppressionKind.IGNORED -> appendLine("[Ignored by you]")
+            SuppressionKind.RULE -> appendLine("[Hidden by a suppress rule]")
+            null -> {}
+        }
         appendLine("${finding.checkName} (${finding.severity.displayName})")
         appendLine("File: ${finding.location.filePath}")
         finding.symbol?.let { appendLine("Symbol: ${it.displayName}") }
