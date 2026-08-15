@@ -31,6 +31,7 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
         var baseBranch: String = ""
         var gitHistoryDays: Int = SettingsSnapshot.DEFAULT_GIT_HISTORY_DAYS
         var longLivedTodoDays: Int = SettingsSnapshot.DEFAULT_LONG_LIVED_TODO_DAYS
+        var hotspotMinCommits: Int = SettingsSnapshot.DEFAULT_HOTSPOT_MIN_COMMITS
         var todoMarkers: MutableList<String> = SettingsSnapshot.DEFAULT_TODO_MARKERS.toMutableList()
         var disabledAnalyzerIds: MutableList<String> = mutableListOf()
         var excludePatterns: MutableList<String> = PathExclusions.DEFAULT_PATTERNS.toMutableList()
@@ -58,6 +59,7 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
         baseBranch = current.baseBranch,
         gitHistoryDays = current.gitHistoryDays,
         longLivedTodoDays = current.longLivedTodoDays,
+        hotspotMinCommits = current.hotspotMinCommits,
         todoMarkers = current.todoMarkers.toList(),
         disabledAnalyzerIds = current.disabledAnalyzerIds.toSet(),
         excludePatterns = current.excludePatterns.toList(),

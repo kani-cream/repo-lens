@@ -12,6 +12,7 @@ import com.kanicream.repolens.analysis.AnalyzerRegistry
 import com.kanicream.repolens.analysis.ProjectAnalyzers
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
 import com.kanicream.repolens.enrich.GitEnrichment
+import com.kanicream.repolens.enrich.HotspotDetector
 import com.kanicream.repolens.model.AnalysisResult
 import com.kanicream.repolens.model.SettingsSnapshot
 import com.kanicream.repolens.vcs.GitHistoryProvider
@@ -118,16 +119,23 @@ class RepoLensAnalysisService(
             provider.lineAges(project, path)?.let { lineAges[path] = it }
         }
 
-        return result.copy(
-            findings = GitEnrichment.apply(
-                findings = result.findings,
-                historyByPath = history,
-                lineAgeEpochMillisByPath = lineAges,
-                nowEpochMillis = System.currentTimeMillis(),
-                longLivedTodoDays = settings.longLivedTodoDays,
-                historyWindowDays = settings.gitHistoryDays,
-            ),
+        val enriched = GitEnrichment.apply(
+            findings = result.findings,
+            historyByPath = history,
+            lineAgeEpochMillisByPath = lineAges,
+            nowEpochMillis = System.currentTimeMillis(),
+            longLivedTodoDays = settings.longLivedTodoDays,
+            historyWindowDays = settings.gitHistoryDays,
         )
+        // Hotspots combine the run's findings with the same history data; they are a
+        // synthesis stage, not an analyzer over content.
+        val hotspots = HotspotDetector.detect(
+            findings = enriched,
+            historyByPath = history,
+            minCommits = settings.hotspotMinCommits,
+            historyWindowDays = settings.gitHistoryDays,
+        )
+        return result.copy(findings = enriched + hotspots)
     }
 
     /** Analyzer IDs, counts and timings only - never file content (design 15.1). */

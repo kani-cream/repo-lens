@@ -96,6 +96,11 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
             row("Long-lived TODO age (days):") {
                 intTextField(range = 1..3650).bindIntText(state::longLivedTodoDays)
             }
+            row("Hotspot minimum commits:") {
+                intTextField(range = 1..10_000).bindIntText(state::hotspotMinCommits)
+                    .comment("A file qualifies as a hotspot when it changed at least this often " +
+                        "within the history window and carries structural findings.")
+            }
         }
         group("Exclusions") {
             row {

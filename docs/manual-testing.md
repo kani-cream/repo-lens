@@ -177,7 +177,22 @@ Git 管理下のプロジェクトで任意の Scope を Analyze する。
 4. **性能** — 履歴クエリは Analyze 1回につき 1 プロセス（`git log --since`）。
    診断ログの解析時間が大きく伸びていないこと
 
-## 8. Ignore / Suppress の確認
+## 8. Hotspot の確認
+
+直近に活発なコミットのあるプロジェクト（開発中の repo-lens 自体が好例）で
+Project を Analyze する。
+
+1. **Hotspot**（`RL-H001`、Warning）が出る: 直近 window 内のコミットが
+   Hotspot minimum commits（既定 3）以上あり、かつ構造系 Finding
+   （Large Type / Function / Parameters / Nesting / Circular）を持つファイル。
+   Value = コミット数 × 構造 Finding 数
+2. **説明可能性** — Reason にコミット数・author 数・構成 Check 名・計算式が
+   すべて書かれている。Copy for AI にもそのまま入る
+3. **Sort** — 一覧のカラムヘッダをクリックすると並べ替えできる
+   （Check でソートすると Hotspot がまとまる）
+4. Tier 0 だけのファイル（TODO のみ等）は Hotspot にならない
+
+## 9. Ignore / Suppress の確認
 
 1. **Ignore** — 一覧の行を右クリック → **Ignore Finding** → 行が消え、
    ステータスに `N hidden (N ignored)` が出る。ルール抑制分は
@@ -192,7 +207,7 @@ Git 管理下のプロジェクトで任意の Scope を Analyze する。
 5. **再解析安定性** — 再 Analyze しても ignored の Finding は ignored のまま
    （stable ID によるため。対象行が編集で移動した場合は新 ID になり再表示される）
 
-## 9. トラブルシューティング
+## 10. トラブルシューティング
 
 - サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log`
 - 解析の診断ログ: 同ログに `RepoLensAnalysisService - analysis scope=... RL-F001=12ms ...`

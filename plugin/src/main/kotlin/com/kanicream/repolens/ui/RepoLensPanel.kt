@@ -91,6 +91,9 @@ internal class RepoLensPanel(private val project: Project) :
         scopeCombo.renderer = textListCellRenderer { it.displayName }
 
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
+        // Click a column header to sort; selection already goes through
+        // convertRowIndexToModel everywhere.
+        table.autoCreateRowSorter = true
         table.emptyText.setText("Run Analyze to collect review candidates")
 
         detailArea.isEditable = false
