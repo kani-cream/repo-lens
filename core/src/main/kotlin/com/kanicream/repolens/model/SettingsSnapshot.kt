@@ -28,6 +28,10 @@ data class SettingsSnapshot(
     val largeDiffChangedLineThreshold: Int = DEFAULT_LARGE_DIFF_CHANGED_LINE_THRESHOLD,
     /** Base branch for the Branch Diff scope; blank auto-detects main/master. */
     val baseBranch: String = "",
+    /** Window for the per-run history query, in days. */
+    val gitHistoryDays: Int = DEFAULT_GIT_HISTORY_DAYS,
+    /** Age at which a TODO/FIXME marker counts as long-lived, in days. */
+    val longLivedTodoDays: Int = DEFAULT_LONG_LIVED_TODO_DAYS,
     val todoMarkers: List<String> = DEFAULT_TODO_MARKERS,
     val disabledAnalyzerIds: Set<String> = emptySet(),
     /** Glob patterns for paths kept out of analysis; see [PathExclusions]. */
@@ -41,6 +45,8 @@ data class SettingsSnapshot(
         const val DEFAULT_PARAMETER_COUNT_THRESHOLD: Int = 7
         const val DEFAULT_NESTING_DEPTH_THRESHOLD: Int = 5
         const val DEFAULT_LARGE_DIFF_CHANGED_LINE_THRESHOLD: Int = 300
+        const val DEFAULT_GIT_HISTORY_DAYS: Int = 90
+        const val DEFAULT_LONG_LIVED_TODO_DAYS: Int = 90
         val DEFAULT_TODO_MARKERS: List<String> = listOf("TODO", "FIXME")
     }
 }

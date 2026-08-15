@@ -41,3 +41,24 @@ interface BranchDiffProvider {
  * it into the user-facing failure message without logging a stack trace.
  */
 class ScopeUnavailableException(reason: String) : Exception(reason)
+
+/**
+ * Supplies Git history evidence. Implemented by the Git descriptor; both queries run on
+ * a background thread and are bounded by the caller (a day window, a fixed file set).
+ * `null` maps mean "history unavailable", which enrichment treats as pass-through.
+ */
+interface GitHistoryProvider {
+
+    /** One repository-wide log query within [days]; per-path stats for the whole window. */
+    fun repositoryHistory(project: Project, days: Int): Map<String, com.kanicream.repolens.enrich.FileHistory>?
+
+    /** Blame for one file: 1-based line to committer time (epoch millis). */
+    fun lineAges(project: Project, repositoryRelativePath: String): Map<Int, Long>?
+
+    companion object {
+        val EP_NAME: ExtensionPointName<GitHistoryProvider> =
+            ExtensionPointName.create("com.kanicream.repolens.gitHistoryProvider")
+
+        fun first(): GitHistoryProvider? = EP_NAME.extensionList.firstOrNull()
+    }
+}

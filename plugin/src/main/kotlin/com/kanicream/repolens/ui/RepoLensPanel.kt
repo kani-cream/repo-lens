@@ -16,6 +16,7 @@ import com.intellij.ui.table.JBTable
 import com.intellij.util.ui.JBUI
 import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
+import com.kanicream.repolens.enrich.GitMetadataKeys
 import com.kanicream.repolens.clipboard.CopyStyle
 import com.kanicream.repolens.clipboard.FindingCopyService
 import com.kanicream.repolens.filter.FindingFilter
@@ -413,6 +414,20 @@ internal class RepoLensPanel(private val project: Project) :
             appendLine()
             appendLine()
             append(text)
+        }
+        finding.metadata[GitMetadataKeys.COMMITS]?.let { commits ->
+            val authors = finding.metadata[GitMetadataKeys.AUTHORS] ?: "?"
+            val window = finding.metadata[GitMetadataKeys.WINDOW_DAYS] ?: "?"
+            val touched = finding.metadata[GitMetadataKeys.LAST_MODIFIED_DAYS_AGO]
+                ?.let { ", last modified $it day(s) ago" }.orEmpty()
+            appendLine()
+            appendLine()
+            append("Git: $commits commit(s) by $authors author(s) in the last $window days$touched")
+        }
+        finding.metadata[GitMetadataKeys.TODO_AGE_DAYS]?.let { age ->
+            val longLived = if (finding.metadata[GitMetadataKeys.TODO_LONG_LIVED] != null) " (long-lived)" else ""
+            appendLine()
+            append("Marker age: $age day(s)$longLived")
         }
         finding.metadata[CircularDependencyAnalyzer.METADATA_EVIDENCE]?.let { evidence ->
             appendLine()

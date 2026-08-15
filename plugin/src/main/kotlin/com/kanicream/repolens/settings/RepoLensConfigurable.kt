@@ -82,12 +82,19 @@ class RepoLensConfigurable(private val project: Project) : BoundConfigurable("Re
                 intTextField(range = 1..1_000_000).bindIntText(state::largeDiffChangedLineThreshold)
             }
         }
-        group("Branch Diff") {
-            row("Base branch:") {
+        group("Git") {
+            row("Base branch (Branch Diff):") {
                 textField()
                     .columns(24)
                     .bindText(state::baseBranch)
                     .comment("Blank auto-detects origin/main, origin/master, main, master.")
+            }
+            row("History window (days):") {
+                intTextField(range = 1..3650).bindIntText(state::gitHistoryDays)
+                    .comment("Bounds the per-run history query used for change frequency and author count.")
+            }
+            row("Long-lived TODO age (days):") {
+                intTextField(range = 1..3650).bindIntText(state::longLivedTodoDays)
             }
         }
         group("Exclusions") {

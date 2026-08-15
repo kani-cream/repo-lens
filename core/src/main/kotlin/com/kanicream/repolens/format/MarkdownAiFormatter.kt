@@ -2,6 +2,7 @@ package com.kanicream.repolens.format
 
 import com.kanicream.repolens.analysis.structure.CircularDependencyAnalyzer
 import com.kanicream.repolens.analysis.tier0.LargeDiffAnalyzer
+import com.kanicream.repolens.enrich.GitMetadataKeys
 import com.kanicream.repolens.model.Finding
 
 /** One finding plus its optional code excerpt, shared by all copy formats. */
@@ -72,6 +73,16 @@ object MarkdownAiFormatter {
             val deleted = finding.metadata[LargeDiffAnalyzer.METADATA_DELETED] ?: "0"
             val status = finding.metadata[LargeDiffAnalyzer.METADATA_STATUS] ?: "changed"
             appendLine("- Diff: +$added −$deleted ($status)")
+        }
+        finding.metadata[GitMetadataKeys.COMMITS]?.let { commits ->
+            val authors = finding.metadata[GitMetadataKeys.AUTHORS] ?: "?"
+            val window = finding.metadata[GitMetadataKeys.WINDOW_DAYS] ?: "?"
+            appendLine("- Git: $commits commit(s) by $authors author(s) in the last $window days")
+        }
+        finding.metadata[GitMetadataKeys.TODO_AGE_DAYS]?.let { age ->
+            val longLived =
+                if (finding.metadata[GitMetadataKeys.TODO_LONG_LIVED] != null) " (long-lived)" else ""
+            appendLine("- Marker age: $age day(s)$longLived")
         }
         appendLine()
         appendLine("### Reason")

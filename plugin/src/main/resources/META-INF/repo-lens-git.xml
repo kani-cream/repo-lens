@@ -7,5 +7,7 @@
     <extensions defaultExtensionNs="com.kanicream.repolens">
         <branchDiffProvider
             implementation="com.kanicream.repolens.vcs.git.GitBranchDiffProvider"/>
+        <gitHistoryProvider
+            implementation="com.kanicream.repolens.vcs.git.GitHistoryProviderImpl"/>
     </extensions>
 </idea-plugin>

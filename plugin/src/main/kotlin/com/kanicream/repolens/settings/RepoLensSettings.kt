@@ -29,6 +29,8 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
         var nestingDepthThreshold: Int = SettingsSnapshot.DEFAULT_NESTING_DEPTH_THRESHOLD
         var largeDiffChangedLineThreshold: Int = SettingsSnapshot.DEFAULT_LARGE_DIFF_CHANGED_LINE_THRESHOLD
         var baseBranch: String = ""
+        var gitHistoryDays: Int = SettingsSnapshot.DEFAULT_GIT_HISTORY_DAYS
+        var longLivedTodoDays: Int = SettingsSnapshot.DEFAULT_LONG_LIVED_TODO_DAYS
         var todoMarkers: MutableList<String> = SettingsSnapshot.DEFAULT_TODO_MARKERS.toMutableList()
         var disabledAnalyzerIds: MutableList<String> = mutableListOf()
         var excludePatterns: MutableList<String> = PathExclusions.DEFAULT_PATTERNS.toMutableList()
@@ -54,6 +56,8 @@ class RepoLensSettings : PersistentStateComponent<RepoLensSettings.State> {
         nestingDepthThreshold = current.nestingDepthThreshold,
         largeDiffChangedLineThreshold = current.largeDiffChangedLineThreshold,
         baseBranch = current.baseBranch,
+        gitHistoryDays = current.gitHistoryDays,
+        longLivedTodoDays = current.longLivedTodoDays,
         todoMarkers = current.todoMarkers.toList(),
         disabledAnalyzerIds = current.disabledAnalyzerIds.toSet(),
         excludePatterns = current.excludePatterns.toList(),

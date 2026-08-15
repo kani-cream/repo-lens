@@ -161,7 +161,23 @@ feature branch 上のプロジェクトで行う（`repo-lens` 自体を開発�
    （空欄に戻すと自動検出に復帰）
 5. 閾値: Large diff threshold（既定 300 changed lines）は Thresholds 群で変更可
 
-## 7. Ignore / Suppress の確認
+## 7. Git history / Long-lived TODO の確認
+
+Git 管理下のプロジェクトで任意の Scope を Analyze する。
+
+1. **Git evidence** — 任意の Finding の Detail 下部に
+   `Git: N commit(s) by M author(s) in the last 90 days, last modified X day(s) ago`
+   が出る（履歴が window 内に無いファイルでは出ない）。Copy for AI にも
+   `- Git: ...` 行が入る
+2. **Marker age** — TODO / FIXME の Finding に `Marker age: N day(s)` が出る。
+   N ≥ 90（Settings → Git → Long-lived TODO age で変更可）なら `(long-lived)`
+   が付き、Reason 末尾に "This marker has been in place for N days." が入る
+3. **劣化動作** — Git の無いプロジェクト（または Git プラグイン無効）では
+   これらの行が出ないだけで、Finding 自体は従来どおり
+4. **性能** — 履歴クエリは Analyze 1回につき 1 プロセス（`git log --since`）。
+   診断ログの解析時間が大きく伸びていないこと
+
+## 8. Ignore / Suppress の確認
 
 1. **Ignore** — 一覧の行を右クリック → **Ignore Finding** → 行が消え、
    ステータスに `N hidden (N ignored)` が出る。ルール抑制分は
@@ -176,7 +192,7 @@ feature branch 上のプロジェクトで行う（`repo-lens` 自体を開発�
 5. **再解析安定性** — 再 Analyze しても ignored の Finding は ignored のまま
    （stable ID によるため。対象行が編集で移動した場合は新 ID になり再表示される）
 
-## 8. トラブルシューティング
+## 9. トラブルシューティング
 
 - サンドボックスのログ: `.intellijPlatform/sandbox/plugin/IU-2026.1.5/log/idea.log`
 - 解析の診断ログ: 同ログに `RepoLensAnalysisService - analysis scope=... RL-F001=12ms ...`

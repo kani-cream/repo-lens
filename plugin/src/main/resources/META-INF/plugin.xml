@@ -39,6 +39,8 @@
                         area="IDEA_PROJECT" dynamic="true"/>
         <extensionPoint name="branchDiffProvider" interface="com.kanicream.repolens.vcs.BranchDiffProvider"
                         dynamic="true"/>
+        <extensionPoint name="gitHistoryProvider" interface="com.kanicream.repolens.vcs.GitHistoryProvider"
+                        dynamic="true"/>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">

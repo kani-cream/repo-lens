@@ -10,6 +10,11 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.kanicream.repolens.analysis.AnalysisOrchestrator
 import com.kanicream.repolens.analysis.AnalyzerRegistry
 import com.kanicream.repolens.analysis.ProjectAnalyzers
+import com.kanicream.repolens.analysis.tier0.TodoMarkerAnalyzer
+import com.kanicream.repolens.enrich.GitEnrichment
+import com.kanicream.repolens.model.AnalysisResult
+import com.kanicream.repolens.model.SettingsSnapshot
+import com.kanicream.repolens.vcs.GitHistoryProvider
 import com.kanicream.repolens.model.AnalysisRequest
 import com.kanicream.repolens.model.AnalysisScopeType
 import com.kanicream.repolens.platform.ScopeResolution
@@ -19,6 +24,8 @@ import com.kanicream.repolens.settings.RepoLensSettings
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 /**
@@ -62,7 +69,7 @@ class RepoLensAnalysisService(
                 currentJob = coroutineScope.launch {
                     try {
                         val result = withBackgroundProgress(project, progressTitle(scopeType)) {
-                            orchestrator.analyze(context)
+                            enrichWithGitEvidence(orchestrator.analyze(context), settingsSnapshot)
                         }
                         logDiagnostics(scopeType, result)
                         onEdt { publish { it.analysisFinished(scopeType, result) } }
@@ -83,6 +90,44 @@ class RepoLensAnalysisService(
 
     fun stop() {
         currentJob?.cancel()
+    }
+
+    /**
+     * Attaches Git history evidence: one bounded log query for the whole run, and blame
+     * only for files carrying TODO findings (capped, so a marker-heavy repository cannot
+     * turn enrichment into a blame storm). Absent Git support or failed queries leave the
+     * findings untouched - the milestone's required degradation.
+     */
+    private suspend fun enrichWithGitEvidence(
+        result: AnalysisResult,
+        settings: SettingsSnapshot,
+    ): AnalysisResult {
+        if (result.findings.isEmpty()) return result
+        val provider = GitHistoryProvider.first() ?: return result
+        val history = provider.repositoryHistory(project, settings.gitHistoryDays) ?: return result
+
+        val todoFiles = result.findings.asSequence()
+            .filter { it.analyzerId == TodoMarkerAnalyzer.ID }
+            .map { it.location.filePath }
+            .distinct()
+            .take(MAX_BLAMED_FILES)
+            .toList()
+        val lineAges = LinkedHashMap<String, Map<Int, Long>>()
+        for (path in todoFiles) {
+            currentCoroutineContext().ensureActive()
+            provider.lineAges(project, path)?.let { lineAges[path] = it }
+        }
+
+        return result.copy(
+            findings = GitEnrichment.apply(
+                findings = result.findings,
+                historyByPath = history,
+                lineAgeEpochMillisByPath = lineAges,
+                nowEpochMillis = System.currentTimeMillis(),
+                longLivedTodoDays = settings.longLivedTodoDays,
+                historyWindowDays = settings.gitHistoryDays,
+            ),
+        )
     }
 
     /** Analyzer IDs, counts and timings only - never file content (design 15.1). */
@@ -106,6 +151,8 @@ class RepoLensAnalysisService(
     }
 
     companion object {
+        private const val MAX_BLAMED_FILES = 100
+
         private val LOG = logger<RepoLensAnalysisService>()
 
         fun getInstance(project: Project): RepoLensAnalysisService = project.service()
