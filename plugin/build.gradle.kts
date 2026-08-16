@@ -59,6 +59,13 @@ tasks.named<RunIdeTask>("runIde") {
     systemProperty("idea.auto.reload.plugins", "false")
 }
 
+tasks.buildSearchableOptions {
+    // The headless IDE that indexes searchable options requires the JVM default
+    // locale to be the IDE default (English); on a Japanese-locale machine it dies
+    // with "Locale must be default". Pin the forked JVM to English.
+    jvmArgs("-Duser.language=en", "-Duser.country=US")
+}
+
 tasks.compileTestKotlin {
     // The bundled Kotlin plugin carries Kotlin 2.4 metadata while this module compiles
     // with 2.2. Tests only need that plugin on the classpath so Kotlin files parse; no

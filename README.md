@@ -99,3 +99,7 @@ IntelliJ types) and `plugin` (IntelliJ Platform adapters, providers, UI). See
 
 Manual verification procedure: [docs/manual-testing.md](docs/manual-testing.md)
 (Japanese). Release history: [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+[Apache License 2.0](LICENSE)

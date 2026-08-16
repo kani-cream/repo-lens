@@ -8,6 +8,7 @@ allprojects {
     // Release ordinal (SemVer-style). Independent of docs/milestones vX.Y, which are
     // theme names - the pull-forward broke any 1:1 mapping (see milestones/README.md).
     // 0.1.0 = core workflow; 0.2.0 = language providers + capability view + hardening;
-    // 0.3.0 = structural analysis; 0.4.0 = git-aware review (branch diff, history, hotspot).
-    version = "0.4.0"
+    // 0.3.0 = structural analysis; 0.4.0 = git-aware review (branch diff, history, hotspot);
+    // 1.0.0 = initial JetBrains Marketplace release.
+    version = "1.0.0"
 }

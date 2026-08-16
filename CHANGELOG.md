@@ -3,8 +3,10 @@
 Product versions are release ordinals; the `vX.Y` names in `docs/milestones/` are theme
 milestones and do not map 1:1 (see `docs/milestones/README.md`).
 
-## Unreleased
+## 1.0.0 — Initial JetBrains Marketplace release
 
+- LICENSE (Apache-2.0), Marketplace plugin icon, and `<change-notes>` for the
+  initial public release.
 - Release hardening toward 1.0: untracked files included in Branch Diff, hotspot no
   longer credits package-group findings to single files, per-declaration reference
   searches, cached history queries, `enrich=` timing in diagnostics.

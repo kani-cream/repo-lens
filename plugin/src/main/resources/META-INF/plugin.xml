@@ -31,6 +31,26 @@
         anywhere, and writes the clipboard only on an explicit Copy action.</p>
     ]]></description>
 
+    <change-notes><![CDATA[
+        <p><b>1.0.0 — Initial public release.</b></p>
+        <ul>
+            <li>Ten checks: large files / types / functions, too many parameters, deep
+            nesting, package dependency cycles, unused public API candidates, oversized
+            diffs, long-lived TODO / FIXME markers, and explainable hotspots.</li>
+            <li>Six scopes: Project, Current File, Selected Files, Module, Local Changes,
+            and Branch Diff (merge-base semantics, uncommitted and untracked work
+            included).</li>
+            <li>Structure analysis for Java, Kotlin, Go, and JavaScript / TypeScript
+            through optional providers; Git-based evidence when the Git plugin is
+            present.</li>
+            <li>Noise control: filters, per-finding ignore, suppress rules, exclusion
+            globs.</li>
+            <li>Copy, Copy with Code, and Copy for AI export selected findings as
+            structured Markdown — locally, with no AI provider involved.</li>
+            <li>English and Japanese UI.</li>
+        </ul>
+    ]]></change-notes>
+
     <resource-bundle>messages.RepoLensBundle</resource-bundle>
 
     <depends>com.intellij.modules.platform</depends>
