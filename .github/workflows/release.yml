@@ -1,0 +1,82 @@
+name: Release
+
+# Tag push publishes the plugin. The tag name carries the version: v1.0.0 must match
+# the `version` in the root build.gradle.kts, and the build fails fast if it does not.
+on:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  release:
+    name: Verify and publish to JetBrains Marketplace
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      # Fail before the 40-minute build rather than after it.
+      - name: Check the Marketplace token is configured
+        env:
+          MARKETPLACE_TOKEN: ${{ secrets.MARKETPLACE_TOKEN }}
+        run: |
+          if [ -z "$MARKETPLACE_TOKEN" ]; then
+            echo "::error::MARKETPLACE_TOKEN secret is not set. Create a Marketplace" \
+                 "Personal Access Token and add it under Settings → Secrets and" \
+                 "variables → Actions."
+            exit 1
+          fi
+
+      # Same reason as in build.yml: the IntelliJ Platform build needs tens of GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h /
+
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-excludes: |
+            caches/**/transforms
+
+      - name: Build and test
+        run: ./gradlew build --no-daemon
+
+      - name: Plugin Verifier
+        run: ./gradlew :plugin:verifyPlugin --no-daemon
+
+      # The distribution is named plugin-<version>.zip, so its presence under the
+      # tag's version is the version check.
+      - name: Check the tag matches the project version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          archive="plugin/build/distributions/plugin-${version}.zip"
+          if [ ! -f "$archive" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} expects ${archive}, which the build" \
+                 "did not produce. Update the version in build.gradle.kts, or retag."
+            ls -l plugin/build/distributions
+            exit 1
+          fi
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+
+      - name: Publish to JetBrains Marketplace
+        env:
+          MARKETPLACE_TOKEN: ${{ secrets.MARKETPLACE_TOKEN }}
+        run: ./gradlew :plugin:publishPlugin --no-daemon
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ARCHIVE" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Published to the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/33576-repo-lens). Changes: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md)."

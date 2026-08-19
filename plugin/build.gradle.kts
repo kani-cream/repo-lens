@@ -96,4 +96,10 @@ intellijPlatform {
             recommended()
         }
     }
+    publishing {
+        // Supplied by CI from the MARKETPLACE_TOKEN secret (a Marketplace Personal
+        // Access Token); never committed. Absent locally, which only matters if
+        // publishPlugin itself is run - every other task is unaffected.
+        token = providers.environmentVariable("MARKETPLACE_TOKEN")
+    }
 }
