@@ -1,5 +1,9 @@
 # Repo Lens
 
+[![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/33576-repo-lens?label=JetBrains%20Marketplace)](https://plugins.jetbrains.com/plugin/33576-repo-lens)
+[![Downloads](https://img.shields.io/jetbrains/plugin/d/33576-repo-lens?label=downloads)](https://plugins.jetbrains.com/plugin/33576-repo-lens)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 A code review navigator for IntelliJ-based IDEs. Repo Lens collects review candidates —
 large files and functions, deep nesting, dependency cycles, unused public API, oversized
 diffs, long-lived TODOs, hotspots — into one tool window, jumps from any finding straight
@@ -12,12 +16,15 @@ only when you press Copy.
 
 ## Installation
 
-Requires IntelliJ IDEA 2026.1 or newer (2026.1 and 2026.2 are verified). See
-[docs/installation.md](docs/installation.md) for details and optional-plugin mapping.
+Requires IntelliJ IDEA 2026.1 or newer (2026.1 and 2026.2 are verified).
 
-1. Build or download `plugin-<version>.zip`
-2. Settings → Plugins → ⚙ → **Install Plugin from Disk…** → select the zip
-3. Restart the IDE
+1. Settings → Plugins → **Marketplace** → search for **Repo Lens**
+2. Install, then restart the IDE (Repo Lens does not support dynamic loading)
+
+Marketplace page: **[plugins.jetbrains.com/plugin/33576-repo-lens](https://plugins.jetbrains.com/plugin/33576-repo-lens)**.
+Installing a built zip from disk still works; see
+[docs/installation.md](docs/installation.md) for that path, the optional-plugin
+mapping, and uninstall notes.
 
 ## Quick start
 
@@ -99,6 +106,14 @@ IntelliJ types) and `plugin` (IntelliJ Platform adapters, providers, UI). See
 
 Manual verification procedure: [docs/manual-testing.md](docs/manual-testing.md)
 (Japanese). Release history: [CHANGELOG.md](CHANGELOG.md).
+
+### Releasing
+
+Pushing a `v<version>` tag runs [.github/workflows/release.yml](.github/workflows/release.yml):
+build and test, Plugin Verifier against both targets, a check that the tag matches the
+`version` in `build.gradle.kts`, `publishPlugin` to the Marketplace, and a GitHub
+release carrying the zip. It needs a Marketplace Personal Access Token stored as the
+`MARKETPLACE_TOKEN` repository secret.
 
 ## License
 

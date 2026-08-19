@@ -8,13 +8,26 @@
 - Java support is bundled in IntelliJ IDEA; nothing extra is needed for Java/Kotlin
   structure analysis.
 
+## Installing from the JetBrains Marketplace
+
+The normal path. Repo Lens is published as
+[Repo Lens](https://plugins.jetbrains.com/plugin/33576-repo-lens) (plugin ID
+`com.kanicream.repolens`).
+
+1. Settings → Plugins → **Marketplace** tab
+2. Search for **Repo Lens** and press **Install**
+3. **Restart the IDE** (Repo Lens does not support dynamic loading — the IDE will tell
+   you a restart is needed)
+
 ## Installing from a ZIP
+
+For a locally built version, or an older release taken from
+[GitHub Releases](https://github.com/kani-cream/repo-lens/releases).
 
 1. Obtain `plugin-<version>.zip` (build it with `./gradlew :plugin:buildPlugin`; it
    lands in `plugin/build/distributions/`)
 2. Settings → Plugins → ⚙ (gear icon) → **Install Plugin from Disk…**
-3. Select the zip, apply, and **restart the IDE** (Repo Lens does not support dynamic
-   loading — the IDE will tell you a restart is needed)
+3. Select the zip, apply, and **restart the IDE**
 
 ## What the optional plugins unlock
 
@@ -34,8 +47,9 @@ run, and the capability list says why.
 
 ## Updating
 
-Install the newer zip the same way; the IDE replaces the previous version and asks for
-a restart.
+Marketplace installs update themselves: the IDE offers the new version under Settings →
+Plugins, and applying it asks for a restart. For a zip install, install the newer zip
+the same way — the IDE replaces the previous version and asks for a restart.
 
 ## Uninstalling
 
